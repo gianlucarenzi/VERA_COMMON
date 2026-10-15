@@ -1,0 +1,138 @@
+# Makefile - libvera: the VERA library shared by the Atari XL/XE (PBI) and
+# the C64 (expansion port), and its test program.
+#
+#   make                      both hosts: build/<host>/libvera.lib, the test,
+#                             the disk images (vera-atari.atr, vera-c64.d64)
+#   make PLATFORM=atari one   one host only
+#   make run-atari | run-c64  start the emulator on the test disk
+#   make clean
+#
+# VICE: virtual drive 8 (+drive8truedrive -trapdevice8): the KERNAL file
+# calls are trapped, the data files load in a moment instead of minutes.
+# The host window is small: it is the second monitor; the VERA window is
+# the game screen.
+#
+# Tools: cc65 (cl65, ca65, ar65), python3, dir2atr (Atari), c1541 (C64).
+
+VERA_COMMON := $(abspath .)
+include mk/libvera.mk
+
+CC65     ?= cc65
+CA65     ?= ca65
+CL65     ?= cl65
+AR65     ?= ar65
+PYTHON   ?= python3
+DIR2ATR  ?= dir2atr
+C1541    ?= c1541
+ATARI800 ?= atari800
+VICE     ?= x64sc
+# the PBI ROM of the card (atari800 needs it to map the card)
+VERA_ROM ?= $(HOME)/Progetti/ATARI/VERA_ATARI_PBI/vera_pbi_handler.rom
+
+B        = build/$(PLATFORM)
+RMT_TRACKS = 4
+
+CFLAGS  = $(LIBVERA_CFLAGS) -Osir
+ASFLAGS = $(LIBVERA_ASFLAGS) -I src/rmt --bin-include-dir fonts \
+          -D RMT_SHADOW -D RMT_VERA -D RMT_TRACKS=$(RMT_TRACKS)
+
+C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
+          src/common/vbm.c src/common/vtm_loader.c
+AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
+          src/common/vtfont.s src/common/hud.s src/$(PLATFORM)/plat_$(PLATFORM).s \
+          src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s
+OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \
+          $(B)/psgtab.o
+
+HEADERS = $(wildcard include/*.h)
+ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
+
+.PHONY: all one lib test disk run-atari run-c64 clean
+
+all:
+	$(MAKE) PLATFORM=atari one
+	$(MAKE) PLATFORM=c64 one
+
+one: lib test disk
+
+lib: $(LIBVERA_LIB) $(LIBVERA_LZS)
+
+$(LIBVERA_LIB): $(OBJS)
+	rm -f $@
+	$(AR65) a $@ $^
+
+$(B)/%.o: src/%.c $(HEADERS)
+	@mkdir -p $(dir $@)
+	$(CC65) $(CFLAGS) -o $(B)/$*.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/$*.s
+
+$(B)/%.o: src/%.s $(ASINC)
+	@mkdir -p $(dir $@)
+	$(CA65) $(ASFLAGS) -o $@ $<
+
+$(B)/psgtab.s: tools/mkpsgtab.py
+	@mkdir -p $(B)
+	$(PYTHON) $< $@
+
+$(B)/psgtab.o: $(B)/psgtab.s
+	$(CA65) $(ASFLAGS) -o $@ $<
+
+$(LIBVERA_LZS): src/rmt/lzsplayr.s $(ASINC)
+	$(CA65) $(ASFLAGS) -o $@ $<
+
+# --- the test program -------------------------------------------------------
+
+TEST_SONG = tests/data/gemx.rmt
+TEST_EXE  = $(B)/testlib.$(EXE)
+
+test: $(TEST_EXE)
+
+$(B)/song.s: $(TEST_SONG) tools/rmt2ca65.py
+	@mkdir -p $(B)
+	$(PYTHON) tools/rmt2ca65.py $< $@
+
+$(B)/song.o: $(B)/song.s
+	$(CA65) $(ASFLAGS) -o $@ $<
+
+$(B)/test_lib.o: tests/test_lib.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_lib.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_lib.s
+
+$(TEST_EXE): $(B)/test_lib.o $(B)/song.o $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/testlib.map -o $@ \
+	    $(B)/test_lib.o $(B)/song.o $(LIBVERA_LIB)
+
+# --- disk images: the same data files on both -------------------------------
+
+TEST_DATA = tests/data/demo.vbm
+
+ifeq ($(PLATFORM),atari)
+DISK = vera-atari.atr
+$(DISK): $(TEST_EXE) $(TEST_DATA)
+	rm -rf $(B)/disk && mkdir -p $(B)/disk
+	cp tools/dos/dos25/DOS.SYS $(B)/disk/DOS.SYS
+	cp $(TEST_EXE) $(B)/disk/AUTORUN.SYS
+	for f in $(TEST_DATA); do n=$$(basename $$f | tr a-z A-Z); cp $$f $(B)/disk/$$n; done
+	$(DIR2ATR) -E -b Dos25 $@ $(B)/disk > /dev/null
+else
+DISK = vera-c64.d64
+$(DISK): $(TEST_EXE) $(TEST_DATA)
+	rm -f $@
+	$(C1541) -format "libvera,lv" d64 $@ -write $(TEST_EXE) testlib \
+	    $(foreach f,$(TEST_DATA),-write $(f) $(notdir $(f))) > /dev/null
+	$(C1541) -attach $@ -list
+endif
+
+disk: $(DISK)
+
+run-atari:
+	$(MAKE) PLATFORM=atari one
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -windowed -win-width 384 -win-height 240 vera-atari.atr
+
+run-c64:
+	$(MAKE) PLATFORM=c64 one
+	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDE00) +VICIIdsize -windowwidth 400 -windowheight 300 \
+	    +drive8truedrive -trapdevice8 -autostart vera-c64.d64
+
+clean:
+	rm -rf build vera-atari.atr vera-c64.d64
