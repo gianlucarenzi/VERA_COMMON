@@ -44,6 +44,8 @@ IRQ_MASK        = $0F                   ; IEN/ISR bits 3:0 = AFLOW|SPRCOL|LINE|V
     .export _vera_irq_count
     .export _vera_frame_init
     .export _vera_frame_wait
+    .export _vera_scanline
+    .export _vera_lines_since
     .export vera_irq_sound
 
     .segment "BSS"
@@ -291,4 +293,50 @@ _vera_frame_wait:
     sbc last_frame
     stx last_frame
     ldx #0
+    rts
+
+; ----------------------------------------------------------------------------
+; unsigned vera_scanline(void) - the VERA line being drawn (0-524).  Bits 7:0
+; (SCANLINE_L) and bit 8 (IEN bit 6) are two reads: the low byte is read again
+; and the pair taken again when the line changed between them (255 -> 256
+; would otherwise read 511).  CTRL is not touched.
+; ----------------------------------------------------------------------------
+_vera_scanline:
+@r: ldy VERA_SCANLINE_L
+    lda VERA_IEN
+    cpy VERA_SCANLINE_L
+    bne @r
+    ldx #0
+    and #$40
+    beq @lo
+    inx
+@lo:
+    tya
+    rts
+
+; ----------------------------------------------------------------------------
+; unsigned __fastcall__ vera_lines_since(unsigned start) - VERA lines from
+; line start (vera_scanline()) to now, 0-524: the time of a piece of work
+; (525 lines a frame)
+; ----------------------------------------------------------------------------
+_vera_lines_since:
+    sta tmp
+    stx tmp2
+    jsr _vera_scanline
+    sec
+    sbc tmp
+    tay
+    txa
+    sbc tmp2
+    tax
+    bcs @pos                    ; now >= start
+    tya                         ; wrapped past the end of the frame
+    clc
+    adc #<525
+    tay
+    txa
+    adc #>525
+    tax
+@pos:
+    tya
     rts

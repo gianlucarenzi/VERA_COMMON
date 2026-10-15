@@ -66,4 +66,12 @@ void vera_frame_init(void);
  * many steps to keep the speed). */
 unsigned char vera_frame_wait(void);
 
+/* The VERA line being drawn (0-524; VSYNC at 480), read atomically. */
+unsigned vera_scanline(void);
+
+/* VERA lines from start (a vera_scanline() value) to now, 0-524: how long a
+ * piece of work took.  A frame is 525 lines (16.8 ms): ~20000 CPU cycles
+ * on the Atari with the ANTIC screen on, ~16000 on the C64. */
+unsigned __fastcall__ vera_lines_since(unsigned start);
+
 #endif /* VERA_IRQ_H */

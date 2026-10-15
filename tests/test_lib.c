@@ -81,12 +81,9 @@ static void move_sprite(void)
     VERA_DATA0 = (unsigned char)(py >> 8);
 }
 
-/* the VERA line being drawn (0-524) */
-static unsigned scanline(void)
-{
-    VERA_CTRL = 0;
-    return VERA_SCANLINE_L | ((VERA_IEN & 0x40) << 2);
-}
+/* a frame counter in BCD, the way a game keeps its score */
+static unsigned char bcd_frames[3];
+static const unsigned char bcd_one[3] = { 0x00, 0x00, 0x01 };
 
 static unsigned start_line, cur_lines, max_lines;
 
@@ -114,6 +111,7 @@ static void status(unsigned char row, unsigned char joy)
         hud_puts(13, 10, joy & PAD_FIRE ? "f" : "-");
         hud_u16(22, 10, px, 3);
         hud_u16(26, 10, py, 3);
+        hud_bcd(6, 12, bcd_frames, 3);
         break;
     default:
         for (i = 0; i < 4; ++i)
@@ -151,14 +149,16 @@ int main(void)
     cputs("VERA frames        dropped\r\n");
     cputs("Music       work      max      lines\r\n");
     cputs("Joystick       sprite    ,\r\n");
-    cputs("PSG\r\n\r\n");
+    cputs("PSG\r\n");
+    cputs("BCD\r\n");
     cputs("Joystick moves the sprite, Q quits.");
     hud_init();
 
     vera_frame_wait();                  /* the start-up is not a dropped frame */
     for (;;) {
         n = vera_frame_wait();
-        start_line = scanline();
+        start_line = vera_scanline();
+        bcd_add(bcd_frames, bcd_one, 3);
         frames += n;
         dropped += n - 1;
 
@@ -170,9 +170,7 @@ int main(void)
         move_sprite();
 
         status((unsigned char)(++tick & 3), joy);
-        cur_lines = scanline() + 525 - start_line;    /* VERA lines of work */
-        if (cur_lines >= 525)
-            cur_lines -= 525;
+        cur_lines = vera_lines_since(start_line);   /* VERA lines of work */
         if (frames > 60 && cur_lines > max_lines)   /* not the start-up */
             max_lines = cur_lines;
 

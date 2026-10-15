@@ -2,13 +2,14 @@
 ; hud.s - fast text on the host screen, the second monitor (C interface:
 ; hud.h).  Straight into the screen RAM of the host's text screen (ANTIC
 ; GRAPHICS 0 at SAVMSC on the Atari, the VIC-II screen at HIBASE on the C64),
-; 40 columns, no cursor: a 5 digit number costs ~300 cycles, cc65 C ~4000.
+; 40 columns, no cursor.  hud_u16 costs ~860 cycles for 2 digits and ~2000
+; for 5 (cc65 C: ~4000); hud_bcd ~30 cycles a byte: keep scores in BCD.
 ; ============================================================================
 
     .setcpu "6502"
     .include "zeropage.inc"
 
-    .export _hud_init, _hud_puts, _hud_u16
+    .export _hud_init, _hud_puts, _hud_u16, _hud_bcd, _bcd_add
     .import popa, popax
 
 .ifdef __ATARI__
@@ -180,4 +181,73 @@ _hud_u16:
     inx
     cpx #5
     bne @digit
+    rts
+
+; ----------------------------------------------------------------------------
+; void __fastcall__ hud_bcd(unsigned char x, unsigned char y,
+;                           const void *bcd, unsigned char nbytes)
+;   nbytes packed BCD bytes, most significant first, 2 digits each, leading
+;   zeros shown (arcade score)
+; ----------------------------------------------------------------------------
+_hud_bcd:
+    sta width                           ; bytes left
+    jsr popax
+    sta ptr2                            ; the BCD bytes
+    stx ptr2+1
+    jsr locate
+    ldy #0                              ; output column
+@b: sty tmp1
+    ldy #0
+    lda (ptr2),y
+    ldy tmp1
+    tax
+    lsr a                               ; high digit
+    lsr a
+    lsr a
+    lsr a
+    ora #SC_ZERO
+    sta (ptr1),y
+    iny
+    txa                                 ; low digit
+    and #$0F
+    ora #SC_ZERO
+    sta (ptr1),y
+    iny
+    inc ptr2
+    bne @n
+    inc ptr2+1
+@n: dec width
+    bne @b
+    rts
+
+; ----------------------------------------------------------------------------
+; unsigned char __fastcall__ bcd_add(void *dst, const void *src,
+;                                    unsigned char nbytes)
+;   dst += src, nbytes packed BCD bytes, most significant first.  Returns 1
+;   on overflow.  Decimal mode with interrupts off: the C64 KERNAL IRQ does
+;   not clear D.
+; ----------------------------------------------------------------------------
+_bcd_add:
+    sta tmp1
+    jsr popax
+    sta ptr2                            ; src
+    stx ptr2+1
+    jsr popax
+    sta ptr1                            ; dst
+    stx ptr1+1
+    ldy tmp1
+    dey
+    php
+    sei
+    sed
+    clc
+@l: lda (ptr1),y
+    adc (ptr2),y
+    sta (ptr1),y
+    dey
+    bpl @l
+    lda #0
+    rol a                               ; A = carry out
+    plp                                 ; D and I as before
+    ldx #0
     rts
