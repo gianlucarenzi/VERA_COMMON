@@ -51,6 +51,7 @@ IRQ_MASK        = $0F                   ; IEN/ISR bits 3:0 = AFLOW|SPRCOL|LINE|V
     .segment "BSS"
 
 old_vector:     .res 2
+vectors:                                ; called through call_vector
 user_cb:        .res 2
 vera_irq_sound: .res 2                  ; sound callback (asm only), 0 = none
 installed:      .res 1
@@ -116,23 +117,35 @@ irq_handler:
     cli                         ; the VERA line is released: host IRQs may nest
     lda vera_irq_sound+1
     beq @user
-    lda pending                 ; A = serviced sources
-    jsr call_sound
+    ldx #vera_irq_sound - vectors
+    jsr call_vector
 @user:
     lda user_cb+1
     beq @end
-    lda pending
-    jsr call_user
+    ldx #user_cb - vectors
+    jsr call_vector
 @end:
     sei
     dec busy
 @done:
     IRQ_RETURN
 
-call_sound:
-    jmp (vera_irq_sound)
-call_user:
-    jmp (user_cb)
+; Call the vector at vectors+X with A = serviced sources.  No "jmp (abs)":
+; the vectors are in BSS and may land on a page border, where the 6502 reads
+; the high byte from the wrong address.  Push the target - 1 and RTS to it;
+; its own RTS comes back to the caller of call_vector.
+call_vector:
+    lda vectors,x
+    sec
+    sbc #1
+    tay
+    lda vectors+1,x
+    sbc #0
+    pha
+    tya
+    pha
+    lda pending                 ; A = serviced sources
+    rts
 
 ; ----------------------------------------------------------------------------
 ; void vera_irq_install(void)
