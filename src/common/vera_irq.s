@@ -53,6 +53,7 @@ IRQ_MASK        = $0F                   ; IEN/ISR bits 3:0 = AFLOW|SPRCOL|LINE|V
     .segment "BSS"
 
 old_vector:     .res 2
+old_ien:        .res 1                  ; IEN before the hook (X16: the KERNAL's VSYNC)
 vectors:                                ; called through call_vector
 user_cb:        .res 2
 vera_irq_sound: .res 2                  ; sound callback (asm only), 0 = none
@@ -161,6 +162,9 @@ _vera_irq_install:
     sta old_vector
     lda IRQ_VECTOR+1
     sta old_vector+1
+    lda VERA_IEN
+    and #IRQ_MASK
+    sta old_ien
     lda #0
     sta flags
     sta busy
@@ -187,8 +191,9 @@ _vera_irq_remove:
     beq @done
     php
     sei
-    lda VERA_IEN                ; all four sources off, keep IRQ_LINE[8]
-    and #$80
+    lda VERA_IEN                ; the sources as before the hook (X16: the
+    and #$80                    ; KERNAL lives on VSYNC), keep IRQ_LINE[8]
+    ora old_ien
     sta VERA_IEN
     lda IRQ_VECTOR              ; restore only if the vector is still ours
     cmp #<irq_handler
