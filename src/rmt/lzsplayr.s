@@ -50,7 +50,7 @@
 ;*
         .export rmt_init, rmt_play, rmt_p3, rmt_silence, SetPokey
         .export RASTERMUSICTRACKER
-        .export rmt_ioactive
+        .import rmt_ioactive            ;* rmtio.s (libvera: set by the loader too)
         .export _rmt_audc
 ;* stream position for players that show it (rmtplay.c with RMT_LZSS): the
 ;* section of the next frame and its place in the section (24 bit, in
@@ -156,9 +156,6 @@ lz_window:      .res 9*256      ;* the last 256 values of each register
 ;* ---------------------------------------------------------------------------
         .segment "CODE"
 
-;* != 0 while SIO is active: channels 3/4 and AUDCTL belong to the serial port
-;* (CRITIC <> 0 has the same effect, see SetPokey)
-rmt_ioactive:   .byte 0
 .ifdef RMT_VERA
 ;* != 0: POKEY kept silent (VERA PSG only output)
 _rmt_pokey_mute: .byte 0

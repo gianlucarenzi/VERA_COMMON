@@ -18,6 +18,13 @@
 ; The PSG pitch follows the Atari the song was written on (rmt_palnts: the
 ; POKEY clock of a PAL or NTSC machine), not the host.
 ;
+; Output: this is the core (player clock, start / stop); the output is
+; the target of two JMPs (out_update, out_silence) that an output module
+; sets: rmtpsg.s (rmt_init, rmt_out_psg: the VERA PSG, psgrmt.s) or the
+; host one (rmt_init_host, rmt_out_host; Atari: rmtpokey.s, POKEY; C64:
+; rmtsid.s, the SID).  The tempo is the VERA frame clock either way, and a
+; program links only the outputs it calls.
+;
 ; The callback runs with interrupts enabled (vera_irq.s), so the Atari SIO
 ; keeps working while the music plays; psgrmt.s saves and restores CTRL,
 ; FX_CTRL and the port 0 address, so the game can be in the middle of its
@@ -29,12 +36,12 @@
         .setcpu "6502"
         .include "vera.inc"
 
-        .export _rmt_init, _rmt_start, _rmt_stop
+        .export rmt_init_core, _rmt_start, _rmt_stop
         .export _rmt_frames, _rmt_ispeed, _rmt_rate, _rmt_palnts
         .export rmt_palnts := _rmt_palnts
+        .export out_update, out_silence
         .export pokey_shadow, _rmt_pokey := pokey_shadow
         .import RASTERMUSICTRACKER
-        .import psg_update, psg_silence, _psg_init, _psg_enable
         .import vera_irq_sound, _vera_frame_init
 
 rmt_init    = RASTERMUSICTRACKER+0      ; X/Y = module, A = song line
@@ -60,16 +67,14 @@ calls:          .res 1
         .segment "CODE"
 
 ; ---------------------------------------------------------------------------
-; unsigned char __fastcall__ rmt_init(const void *module)
-; Music stopped first.  Returns the instrument speed (1..4).
-_rmt_init:
+; rmt_init_core: A/X = module (the output modules' rmt_init*, once they set
+; the output).  Music stopped first.  Returns A = instrument speed (1..4),
+; X = 0.
+rmt_init_core:
         pha
         txa
         pha
         jsr _rmt_stop
-        jsr _psg_init                   ; PAL / NTSC tables of rmt_palnts
-        lda #1
-        sta _psg_enable                 ; the voices follow the player
         pla                             ; X = lo, Y = hi for the player
         tay
         pla
@@ -111,16 +116,17 @@ _rmt_start:
 ; kept (rmt_start goes on from there)
 _rmt_stop:
         lda on
-        beq @done
-        php
+        bne @off
+        rts
+@off:   php
         sei
         lda #0
         sta on
         sta vera_irq_sound+1            ; callback off
         plp
         jsr rmt_silence
-        jmp psg_silence
-@done:  rts
+out_silence:
+        jmp no_out                      ; the output's silence (rmtpsg.s, ...)
 
 ; ---------------------------------------------------------------------------
 ; VERA IRQ sound callback: A = serviced sources
@@ -142,6 +148,11 @@ frame:
         inc _rmt_frames
         bne @psg
         inc _rmt_frames+1
-@psg:   jmp psg_update                  ; channel state -> VERA PSG voices
+@psg:   jmp out_update
 @skip:  sta acc
 @rts:   rts
+
+out_update:
+        jmp no_out                      ; the output's update: channel state
+                                        ; -> PSG voices, POKEY or SID
+no_out: rts

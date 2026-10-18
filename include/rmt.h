@@ -21,13 +21,29 @@ extern unsigned char rmt_rate;
 extern unsigned char rmt_palnts;
 
 /* Stop the music and init the player on a module; returns the instrument
- * speed (player calls per song frame, 1..4). */
+ * speed (player calls per song frame, 1..4).  rmt_init: the music on the
+ * VERA PSG; rmt_init_host: on the host's own chip (POKEY on the Atari, the
+ * SID on the C64; not on the X16), without linking the PSG code. */
 unsigned char __fastcall__ rmt_init(const void *module);
+unsigned char __fastcall__ rmt_init_host(const void *module);
 
 /* Music on (installs the VERA frame clock if needed) / off (PSG voices
  * silent, the song position kept). */
 void rmt_start(void);
 void rmt_stop(void);
+
+/* Switch the output while the music plays: the VERA PSG (rmt_out_psg) or
+ * the host's own chip (rmt_out_host).  The tempo is the VERA frame clock
+ * either way.  POKEY: during SIO only
+ * channels 1+2 play (3+4 are the serial clock); the SID has 3 voices, the
+ * louder of POKEY channels 3 and 4 is heard. */
+void rmt_out_psg(void);
+void rmt_out_host(void);
+
+/* Atari, POKEY output: bracket the transfers of an SIO driver that does not
+ * set CRITIC (sio.s does it itself; the OS SIO sets CRITIC). */
+void rmt_io_begin(void);
+void rmt_io_end(void);
 
 extern volatile unsigned int  rmt_frames;     /* song frames played */
 extern unsigned char          rmt_ispeed;     /* player calls per song frame */

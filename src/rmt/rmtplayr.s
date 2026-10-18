@@ -41,7 +41,7 @@
 
         .export rmt_init, rmt_play, rmt_p3, rmt_silence, SetPokey
         .export RASTERMUSICTRACKER
-        .export rmt_ioactive
+        .import rmt_ioactive            ;* rmtio.s (libvera: set by the loader too)
         .export _rmt_audc
 .ifdef RMT_VERA
         .export trackn_audf, trackn_audc, v_audctl, v_audctl2
@@ -275,9 +275,6 @@ vibtabnext:
 ;* ---------------------------------------------------------------------------
         .segment "CODE"
 
-;* != 0 while SIO is active: channels 3/4 and AUDCTL belong to the serial port
-;* (CRITIC <> 0 has the same effect, see SetPokey)
-rmt_ioactive:   .byte 0
 .ifdef RMT_VERA
 ;* != 0: POKEY kept silent (VERA PSG only output)
 _rmt_pokey_mute: .byte 0
