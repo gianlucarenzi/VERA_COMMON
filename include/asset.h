@@ -11,6 +11,10 @@
  *   C64    "r1field.vts", PRG file through the KERNAL (1541 disk, D64)
  * The file contents are the same bytes on every host: the build writes the
  * same file to both disk images (tools/mkdisk.py).
+ * Atari and C64 can read the files from the microSD of the VERA instead:
+ * link $(LIBVERA_SD_LIB) before $(LIBVERA_LIB) (src/common/asset_sd.c),
+ * the files go in the root of a FAT32 partition (tools/mksdimg.py).  The
+ * X16 needs nothing: its drive 8 is the SD card.
  *
  * One file is open at a time.  The formats carry their own lengths: never
  * rely on a short read for the end of a file (Atari DOS was seen to deliver

@@ -46,6 +46,27 @@ AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
 OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \
           $(B)/psgtab.o
 
+# FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
+# VERA_BASE: $D100 on Atari, $DE00 on C64 (default), $9F20 on X16
+# PETSCII: only on C64 and X16 (Atari uses ASCII natively)
+ifeq ($(PLATFORM),atari)
+FAT32_VERA_BASE = 0xD100
+FAT32_PETSCII =
+else ifeq ($(PLATFORM),c64)
+FAT32_VERA_BASE = $(VERA_BASE)
+FAT32_PETSCII = -D PETSCII=1
+else
+FAT32_VERA_BASE = 0x9F20
+FAT32_PETSCII = -D PETSCII=1
+endif
+
+FAT32_OBJS = $(patsubst src/fat32/%.s,$(B)/fat32_%.o,$(wildcard src/fat32/*.s))
+
+$(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
+	@mkdir -p $(B)
+	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) \
+	    -I src/fat32 -I include -o $@ $<
+
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
@@ -58,9 +79,14 @@ all:
 
 one: lib test disk
 
-lib: $(LIBVERA_LIB) $(LIBVERA_LZS)
+lib: $(LIBVERA_LIB) $(LIBVERA_LZS) $(if $(filter cx16,$(PLATFORM)),,$(LIBVERA_SD_LIB))
 
 $(LIBVERA_LIB): $(OBJS)
+	rm -f $@
+	$(AR65) a $@ $^
+
+# the asset.h functions on the microSD and the FAT32 code they use
+$(LIBVERA_SD_LIB): $(B)/common/asset_sd.o $(FAT32_OBJS)
 	rm -f $@
 	$(AR65) a $@ $^
 
@@ -166,27 +192,6 @@ $(B)/test_sdfs.o: tests/test_sdfs.c $(HEADERS)
 $(B)/test_sdfs_minimal.o: tests/test_sdfs_minimal.c $(HEADERS)
 	$(CC65) $(CFLAGS) -o $(B)/test_sdfs_minimal.s $<
 	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_sdfs_minimal.s
-
-# FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
-# VERA_BASE: $D100 on Atari, $DE00 on C64 (default), $9F20 on X16
-# PETSCII: only on C64 and X16 (Atari uses ASCII natively)
-ifeq ($(PLATFORM),atari)
-FAT32_VERA_BASE = 0xD100
-FAT32_PETSCII =
-else ifeq ($(PLATFORM),c64)
-FAT32_VERA_BASE = 0xDE00
-FAT32_PETSCII = -D PETSCII=1
-else
-FAT32_VERA_BASE = 0x9F20
-FAT32_PETSCII = -D PETSCII=1
-endif
-
-FAT32_OBJS = $(patsubst src/fat32/%.s,$(B)/fat32_%.o,$(wildcard src/fat32/*.s))
-
-$(B)/fat32_%.o: src/fat32/%.s
-	@mkdir -p $(B)
-	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) \
-	    -I src/fat32 -I include -o $@ $<
 
 $(SD_TEST_EXE): $(B)/test_sdfs.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
 	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_sdfs.map -o $@ \
