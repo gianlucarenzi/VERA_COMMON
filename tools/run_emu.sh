@@ -13,9 +13,9 @@ name="$1"; shift
 "$@" > "${EMU_LOG:-/dev/null}" 2>&1 &
 pid=$!
 
-find_win() {
+find_win() {			# $1 = name regexp, $2 = tries of 0.1 s
 	i=0
-	while [ $i -lt 100 ]; do
+	while [ $i -lt "${2:-100}" ]; do
 		id=$(wmctrl -lp | awk -v p="$pid" -v n="$1" '$3 == p && tolower($0) ~ tolower(n) { print $1; exit }')
 		[ -n "$id" ] && { echo "$id"; return; }
 		i=$((i + 1)); sleep 0.1
@@ -26,7 +26,7 @@ sw=$(xdpyinfo | awk '/dimensions/ { split($2, d, "x"); print d[1] }')
 sh=$(xdpyinfo | awk '/dimensions/ { split($2, d, "x"); print d[2] }')
 
 main=$(find_win "$name")
-vera=$(find_win 'VERA')
+vera=$(find_win 'VERA' 20)	# the X16 has none
 if [ -n "$main" ]; then
 	wmctrl -i -r "$main" -e 0,0,24,-1,-1
 	wmctrl -i -r "$main" -b add,above
