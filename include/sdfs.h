@@ -59,7 +59,8 @@ unsigned __fastcall__ sd_read_vram(unsigned n);
 void sd_close(void);
 
 /* Open a directory ("" = the current one) and read its entries into
- * sd_dirent; sd_readdir() returns 0 after the last one. */
+ * sd_dirent; sd_readdir() returns 0 after the last one. Close it with
+ * sd_close() before opening anything else (one context only). */
 unsigned char __fastcall__ sd_opendir(const char *path);
 unsigned char sd_readdir(void);
 

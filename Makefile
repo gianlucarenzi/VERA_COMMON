@@ -148,5 +148,76 @@ run-x16:
 	$(MAKE) PLATFORM=cx16 one
 	$(X16EMU) -scale 2 -fsroot build/cx16/disk -prg build/cx16/disk/TESTLIB.PRG -run
 
+# --- FAT32 SD test -----------------------------------------------------------
+
+SD_TEST_EXE = $(B)/test_sdfs.$(EXE)
+SD_IMG      = tests/test_fat32.img
+
+test-sdfs: $(SD_TEST_EXE)
+
+tests/test_fat32.img:
+	@mkdir -p tests
+	python3 tests/gen_test_image.py $@
+
+$(B)/test_sdfs.o: tests/test_sdfs.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_sdfs.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_sdfs.s
+
+$(B)/test_sdfs_minimal.o: tests/test_sdfs_minimal.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_sdfs_minimal.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_sdfs_minimal.s
+
+# FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
+# VERA_BASE: $D100 on Atari, $DE00 on C64 (default), $9F20 on X16
+# PETSCII: only on C64 and X16 (Atari uses ASCII natively)
+ifeq ($(PLATFORM),atari)
+FAT32_VERA_BASE = 0xD100
+FAT32_PETSCII =
+else ifeq ($(PLATFORM),c64)
+FAT32_VERA_BASE = 0xDE00
+FAT32_PETSCII = -D PETSCII=1
+else
+FAT32_VERA_BASE = 0x9F20
+FAT32_PETSCII = -D PETSCII=1
+endif
+
+FAT32_OBJS = $(patsubst src/fat32/%.s,$(B)/fat32_%.o,$(wildcard src/fat32/*.s))
+
+$(B)/fat32_%.o: src/fat32/%.s
+	@mkdir -p $(B)
+	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) \
+	    -I src/fat32 -I include -o $@ $<
+
+$(SD_TEST_EXE): $(B)/test_sdfs.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_sdfs.map -o $@ \
+	    $(B)/test_sdfs.o $(FAT32_OBJS) $(LIBVERA_LIB)
+
+$(B)/test_sdfs_minimal.$(EXE): $(B)/test_sdfs_minimal.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_sdfs_minimal.map -o $@ \
+	    $(B)/test_sdfs_minimal.o $(FAT32_OBJS) $(LIBVERA_LIB)
+
+$(B)/test_rastan_sd.$(EXE): $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_rastan_sd.map -o $@ \
+	    $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB)
+
+$(B)/test_rastan_sd.o: tests/test_rastan_sd.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_rastan_sd.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_rastan_sd.s
+
+run-test-sdfs: PLATFORM ?= atari
+run-test-sdfs: test-sdfs $(SD_IMG)
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	    -windowed -win-width 384 -win-height 240 build/atari/test_sdfs.xex
+
+run-test-sdfs-minimal: PLATFORM ?= atari
+run-test-sdfs-minimal: $(B)/test_sdfs_minimal.$(EXE) $(SD_IMG)
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	    -windowed -win-width 384 -win-height 240 build/atari/test_sdfs_minimal.xex
+
+run-test-rastan-sd: PLATFORM ?= atari
+run-test-rastan-sd: $(B)/test_rastan_sd.$(EXE) $(SD_IMG)
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	    -windowed -win-width 384 -win-height 240 build/atari/test_rastan_sd.xex
+
 clean:
-	rm -rf build vera-atari.atr vera-c64.d64
+	rm -rf build vera-atari.atr vera-c64.d64 tests/test_fat32.img

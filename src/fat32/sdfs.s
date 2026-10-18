@@ -8,6 +8,7 @@
 
 .include "lib.inc"
 
+.import sdcard_init
 .import fat32_init, fat32_alloc_context, fat32_set_context
 .import fat32_open, fat32_read, fat32_close
 .import fat32_open_dir, fat32_read_dirent, fat32_chdir
@@ -23,7 +24,6 @@ NAME_MAX    = 128
 
 .segment "BSS"
 name_buf:   .res NAME_MAX           ; the name, in ASCII
-mounted:    .res 1
 
 .segment "CODE"
 
@@ -38,6 +38,8 @@ ret_carry:
 ; unsigned char sd_mount(void)
 ;-----------------------------------------------------------------------------
 _sd_mount:
+	jsr sdcard_init                 ; as the X16 DOS does before fat32_init
+	bcc ret_carry
 	jsr fat32_init
 	bcc ret_carry
 	lda #0                          ; volume 0
@@ -132,7 +134,11 @@ _sd_close:
 ;-----------------------------------------------------------------------------
 _sd_opendir:
 	jsr set_name
-	jsr fat32_open_dir
+	lda name_buf                    ; "" -> fat32_ptr = 0: the current one
+	bne @open
+	sta fat32_ptr
+	sta fat32_ptr + 1
+@open:	jsr fat32_open_dir
 	jmp ret_carry
 
 _sd_readdir:
