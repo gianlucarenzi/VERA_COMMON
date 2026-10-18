@@ -15,8 +15,10 @@
 ; that time themselves on vera_frame_wait() run at the same speed on PAL
 ; and NTSC Ataris and C64s.
 ;
-; Callbacks: after the sources are acknowledged the hook runs the sound
-; callback (vera_irq_sound, used by rmtdrv.s) and then the user callback,
+; Callbacks: after the sources are acknowledged the hook runs the user
+; callback and then the sound callback (vera_irq_sound, used by rmtdrv.s):
+; the user one does the work that must fit the vertical blank, the music
+; (a few hundred to a few thousand cycles) comes after it,
 ; with interrupts enabled (CLI) so that the host's serial IRQs (Atari SIO)
 ; are not held off by a long music frame.  A VERA IRQ that arrives while
 ; the callbacks are running is acknowledged and counted, but does not run
@@ -115,14 +117,14 @@ irq_handler:
     inc busy
     cld
     cli                         ; the VERA line is released: host IRQs may nest
-    lda vera_irq_sound+1
-    beq @user
-    ldx #vera_irq_sound - vectors
-    jsr call_vector
-@user:
-    lda user_cb+1
-    beq @end
+    lda user_cb+1               ; the user first: its VSYNC work (scroll,
+    beq @sound                  ; sprite attributes) must fit the blank
     ldx #user_cb - vectors
+    jsr call_vector
+@sound:
+    lda vera_irq_sound+1        ; then the music, which can take longer
+    beq @end
+    ldx #vera_irq_sound - vectors
     jsr call_vector
 @end:
     sei
