@@ -1,0 +1,153 @@
+;-----------------------------------------------------------------------------
+; sdfs.s - libvera: the C interface of the FAT32 code (sdfs.h).
+;
+; Assembled with -t none like the rest of src/fat32 (character constants in
+; ASCII); -D PETSCII=1 on the C64 and the X16, where cc65 C strings are
+; PETSCII: the names are converted to ASCII on the way in.
+;-----------------------------------------------------------------------------
+
+.include "lib.inc"
+
+.import fat32_init, fat32_alloc_context, fat32_set_context
+.import fat32_open, fat32_read, fat32_close
+.import fat32_open_dir, fat32_read_dirent, fat32_chdir
+.import fat32_dirent, fat32_size, fat32_errno
+.import popax
+
+.export _sd_mount, _sd_open, _sd_read, _sd_read_vram, _sd_close
+.export _sd_opendir, _sd_readdir, _sd_chdir, _sd_errno
+.export _sd_dirent := fat32_dirent
+
+VERA_DATA0  = VERA_BASE + $03
+NAME_MAX    = 128
+
+.segment "BSS"
+name_buf:   .res NAME_MAX           ; the name, in ASCII
+mounted:    .res 1
+
+.segment "CODE"
+
+; C = 1 -> A/X = 1, else 0
+ret_carry:
+	lda #0
+	tax
+	rol a
+	rts
+
+;-----------------------------------------------------------------------------
+; unsigned char sd_mount(void)
+;-----------------------------------------------------------------------------
+_sd_mount:
+	jsr fat32_init
+	bcc ret_carry
+	lda #0                          ; volume 0
+	jsr fat32_alloc_context
+	bcc ret_carry
+	jsr fat32_set_context
+	jmp ret_carry
+
+;-----------------------------------------------------------------------------
+; A/X = C string -> fat32_ptr = name_buf (ASCII, at most NAME_MAX - 1)
+;-----------------------------------------------------------------------------
+set_name:
+	sta fat32_ptr
+	stx fat32_ptr + 1
+	ldy #0
+@l:	lda (fat32_ptr),y
+	beq @end
+.ifdef PETSCII
+	cmp #$41                        ; PETSCII a-z ($41-$5A) -> ASCII $61-$7A
+	bcc @put
+	cmp #$5B
+	bcs @hi
+	ora #$20
+	bne @put                        ; always
+@hi:	cmp #$C1                        ; PETSCII A-Z ($C1-$DA) -> ASCII $41-$5A
+	bcc @put
+	cmp #$DB
+	bcs @put
+	and #$7F
+.endif
+@put:	sta name_buf,y
+	iny
+	cpy #NAME_MAX - 1
+	bne @l
+@end:	lda #0
+	sta name_buf,y
+	lda #<name_buf
+	sta fat32_ptr
+	lda #>name_buf
+	sta fat32_ptr + 1
+	rts
+
+;-----------------------------------------------------------------------------
+; unsigned char __fastcall__ sd_open(const char *path)
+;-----------------------------------------------------------------------------
+_sd_open:
+	jsr set_name
+	jsr fat32_open
+	jmp ret_carry
+
+;-----------------------------------------------------------------------------
+; unsigned __fastcall__ sd_read(void *dst, unsigned n)
+; unsigned __fastcall__ sd_read_vram(unsigned n)
+;-----------------------------------------------------------------------------
+_sd_read:
+	sta fat32_size
+	stx fat32_size + 1
+	jsr popax
+	sta fat32_ptr
+	stx fat32_ptr + 1
+	clc                             ; to memory
+	bcc read
+
+_sd_read_vram:
+	sta fat32_size
+	stx fat32_size + 1
+	lda #<VERA_DATA0
+	sta fat32_ptr
+	lda #>VERA_DATA0
+	sta fat32_ptr + 1
+	sec                             ; stream: every byte to the same address
+
+read:
+	lda #0
+	sta fat32_size + 2
+	sta fat32_size + 3
+	jsr fat32_read                  ; fat32_size = bytes read
+	lda fat32_size
+	ldx fat32_size + 1
+	rts
+
+;-----------------------------------------------------------------------------
+; void sd_close(void)
+;-----------------------------------------------------------------------------
+_sd_close:
+	jmp fat32_close
+
+;-----------------------------------------------------------------------------
+; unsigned char __fastcall__ sd_opendir(const char *path)
+; unsigned char sd_readdir(void)
+; unsigned char __fastcall__ sd_chdir(const char *path)
+;-----------------------------------------------------------------------------
+_sd_opendir:
+	jsr set_name
+	jsr fat32_open_dir
+	jmp ret_carry
+
+_sd_readdir:
+	jsr fat32_read_dirent
+	jmp ret_carry
+
+_sd_chdir:
+	jsr set_name
+	jsr fat32_chdir
+	jmp ret_carry
+
+;-----------------------------------------------------------------------------
+; unsigned char sd_errno(void)
+;-----------------------------------------------------------------------------
+_sd_errno:
+	lda fat32_errno
+	ldx #0
+	rts
