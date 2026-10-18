@@ -1,16 +1,19 @@
 ; vera.inc - symbols of the VERA card, shared by every libvera module on
-; every host (Atari XL/XE PBI, C64 expansion port).
+; every host (Atari XL/XE PBI, C64 expansion port, Commander X16).
 ; All symbol names are padded to 24 characters so the '=' falls at column 25.
 ;
 ; Only the base of the 32 registers depends on the host:
 ;   Atari  $D100 (PBI device space; the registers answer whether or not the
 ;          $D1FF latch selects the card: the latch only maps its ROM)
 ;   C64    $DE00 (IO1) or $DF00 (IO2, -D VERA_BASE=$DF00)
-; ca65 -t atari / -t c64 defines __ATARI__ / __C64__.
+;   X16    $9F20
+; ca65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
 
 .ifndef VERA_BASE
 .ifdef __ATARI__
 VERA_BASE               = $D100                     ; PBI (atari800: -verax16)
+.elseif .defined(__CX16__)
+VERA_BASE               = $9F20                     ; on the board
 .else
 VERA_BASE               = $DE00                     ; IO1 (VICE: -vera -verabase 0xde00)
 .endif

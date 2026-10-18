@@ -63,8 +63,17 @@ static unsigned char stream(unsigned long n, unsigned long *loaded, unsigned lon
             return 0;
         n -= chunk;
         *loaded += chunk;
-        if (progress)
+        if (progress) {
+            /* the callback may move port 0: on the X16 conio writes the
+               KERNAL text screen through the VERA */
+            unsigned char l, m, h;
+
+            VERA_CTRL = 0;
+            l = VERA_ADDR_L; m = VERA_ADDR_M; h = VERA_ADDR_H;
             progress(name, name_len, *loaded, total);
+            VERA_CTRL = 0;
+            VERA_ADDR_L = l; VERA_ADDR_M = m; VERA_ADDR_H = h;
+        }
     }
     return 1;
 }

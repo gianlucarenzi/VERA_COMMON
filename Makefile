@@ -1,10 +1,11 @@
-# Makefile - libvera: the VERA library shared by the Atari XL/XE (PBI) and
-# the C64 (expansion port), and its test program.
+# Makefile - libvera: the VERA library shared by the Atari XL/XE (PBI), the
+# C64 (expansion port) and the Commander X16, and its test program.
 #
-#   make                      both hosts: build/<host>/libvera.lib, the test,
-#                             the disk images (vera-atari.atr, vera-c64.d64)
+#   make                      every host: build/<host>/libvera.lib, the test,
+#                             the disk images (vera-atari.atr, vera-c64.d64;
+#                             X16: the directory build/cx16/disk)
 #   make PLATFORM=atari one   one host only
-#   make run-atari | run-c64  start the emulator on the test disk
+#   make run-atari | run-c64 | run-x16   start the emulator on the test
 #   make clean
 #
 # VICE: virtual drive 8 (+drive8truedrive -trapdevice8): the KERNAL file
@@ -26,6 +27,7 @@ DIR2ATR  ?= dir2atr
 C1541    ?= c1541
 ATARI800 ?= atari800
 VICE     ?= x64sc
+X16EMU   ?= x16emu
 # the PBI ROM of the card (atari800 needs it to map the card)
 VERA_ROM ?= $(HOME)/Progetti/ATARI/VERA_ATARI_PBI/vera_pbi_handler.rom
 
@@ -47,11 +49,12 @@ OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
-.PHONY: all one lib test disk run-atari run-c64 clean
+.PHONY: all one lib test disk run-atari run-c64 run-x16 clean
 
 all:
 	$(MAKE) PLATFORM=atari one
 	$(MAKE) PLATFORM=c64 one
+	$(MAKE) PLATFORM=cx16 one
 
 one: lib test disk
 
@@ -114,6 +117,13 @@ $(DISK): $(TEST_EXE) $(TEST_DATA)
 	cp $(TEST_EXE) $(B)/disk/AUTORUN.SYS
 	for f in $(TEST_DATA); do n=$$(basename $$f | tr a-z A-Z); cp $$f $(B)/disk/$$n; done
 	$(DIR2ATR) -E -b Dos25 $@ $(B)/disk > /dev/null
+else ifeq ($(PLATFORM),cx16)
+# the X16 reads a host directory as drive 8 (x16emu -fsroot)
+DISK = $(B)/disk/TESTLIB.PRG
+$(DISK): $(TEST_EXE) $(TEST_DATA)
+	rm -rf $(B)/disk && mkdir -p $(B)/disk
+	cp $(TEST_EXE) $@
+	cp $(TEST_DATA) $(B)/disk/
 else
 DISK = vera-c64.d64
 $(DISK): $(TEST_EXE) $(TEST_DATA)
@@ -133,6 +143,10 @@ run-c64:
 	$(MAKE) PLATFORM=c64 one
 	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDE00) +VICIIdsize -windowwidth 400 -windowheight 300 \
 	    +drive8truedrive -trapdevice8 -autostart vera-c64.d64
+
+run-x16:
+	$(MAKE) PLATFORM=cx16 one
+	$(X16EMU) -scale 2 -fsroot build/cx16/disk -prg build/cx16/disk/TESTLIB.PRG -run
 
 clean:
 	rm -rf build vera-atari.atr vera-c64.d64

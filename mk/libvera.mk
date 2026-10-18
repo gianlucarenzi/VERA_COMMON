@@ -1,7 +1,7 @@
 # libvera.mk - build a program with libvera, for one host.
 #
 #   VERA_COMMON = /path/to/VERA_COMMON
-#   PLATFORM    = atari            # or c64
+#   PLATFORM    = atari            # or c64, cx16
 #   include $(VERA_COMMON)/mk/libvera.mk
 #
 #   game.xex: main.o $(LIBVERA_LIB)
@@ -11,8 +11,8 @@
 # C64: VERA_BASE=0xDF00 for a card in IO2 (rebuild the library with it too).
 
 PLATFORM ?= atari
-ifeq ($(filter atari c64,$(PLATFORM)),)
-$(error PLATFORM must be atari or c64, not '$(PLATFORM)')
+ifeq ($(filter atari c64 cx16,$(PLATFORM)),)
+$(error PLATFORM must be atari, c64 or cx16, not '$(PLATFORM)')
 endif
 
 ifeq ($(PLATFORM),c64)
@@ -36,7 +36,7 @@ ifeq ($(PLATFORM),atari)
 LIBVERA_START = --start-addr 0x2400
 endif
 
-# executable suffix: XEX on the Atari, PRG on the C64
+# executable suffix: XEX on the Atari, PRG on the C64 and the X16
 ifeq ($(PLATFORM),atari)
 EXE = xex
 else

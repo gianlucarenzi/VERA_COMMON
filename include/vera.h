@@ -4,7 +4,8 @@
  * Only the base of the 32 registers depends on the host (see vera.inc):
  *   Atari  $D100 (PBI device space)
  *   C64    $DE00 (IO1), or $DF00 with -DVERA_BASE=0xDF00u (IO2)
- * cc65 -t atari / -t c64 defines __ATARI__ / __C64__.
+ *   X16    $9F20
+ * cc65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
  */
 
 #ifndef VERA_H
@@ -15,8 +16,10 @@
 #define VERA_BASE 0xD100u
 #elif defined(__C64__)
 #define VERA_BASE 0xDE00u
+#elif defined(__CX16__)
+#define VERA_BASE 0x9F20u
 #else
-#error "libvera: unsupported target (cl65 -t atari or -t c64)"
+#error "libvera: unsupported target (cl65 -t atari, -t c64 or -t cx16)"
 #endif
 #endif
 

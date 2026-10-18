@@ -124,8 +124,8 @@ void __fastcall__ vt_putc(char c)
         newline();
         return;
     }
-#if defined(__C64__)
-    /* cc65 c64 strings are PETSCII: back to ASCII */
+#if defined(__C64__) || defined(__CX16__)
+    /* cc65 c64 / cx16 strings are PETSCII: back to ASCII */
     if (a >= 0x41 && a <= 0x5A)
         a += 0x20;                  /* a-z */
     else if (a >= 0xC1 && a <= 0xDA)

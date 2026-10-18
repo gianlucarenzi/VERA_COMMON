@@ -145,6 +145,9 @@ int main(void)
     rmt_init(rmt_song);
     rmt_start();
 
+#ifndef __CX16__
+    /* the second monitor; the X16 has none (its text screen is the VERA
+       layer 1, now the vtext line): no labels, and hud.h does nothing */
     gotoxy(0, 8);
     cputs("VERA frames        dropped\r\n");
     cputs("Music       work      max      lines\r\n");
@@ -152,6 +155,7 @@ int main(void)
     cputs("PSG\r\n");
     cputs("BCD\r\n");
     cputs("Joystick moves the sprite, Q quits.");
+#endif
     hud_init();
 
     vera_frame_wait();                  /* the start-up is not a dropped frame */

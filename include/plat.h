@@ -2,7 +2,8 @@
 #define PLAT_H
 
 /*
- * plat.h - the host differences seen by C code (src/atari, src/c64).
+ * plat.h - the host differences seen by C code (src/atari, src/c64,
+ * src/cx16).
  *
  * The VERA is the same chip on every host: the game sees only this small
  * interface for what is not the VERA.
@@ -10,9 +11,13 @@
  * The host's own screen (ANTIC on the Atari, VIC-II on the C64) stays on:
  * it is the second monitor (score, map, status).  Write it with cc65 conio
  * (gotoxy, cputs, cprintf): 40 columns on both, the same source.
+ *
+ * Commander X16: no second screen (its text screen is a VERA layer too):
+ * conio writes go to the KERNAL screen, hud.h does nothing.
  */
 
-/* plat_joy(): the joystick, active high (Atari stick 0, C64 port 2) */
+/* plat_joy(): the joystick, active high (Atari stick 0, C64 port 2, X16
+ * joystick 0 = the keyboard joystick of the KERNAL, fire = B or A) */
 #define PAD_UP     0x01
 #define PAD_DOWN   0x02
 #define PAD_LEFT   0x04
@@ -29,6 +34,9 @@ extern unsigned char plat_ntsc;
 #if defined(__ATARI__)
 #define PLAT_KEY_EXIT  0x1B             /* ESC */
 #define PLAT_NAME      "Atari XL/XE"
+#elif defined(__CX16__)
+#define PLAT_KEY_EXIT  0x03             /* RUN/STOP */
+#define PLAT_NAME      "Commander X16"
 #else
 #define PLAT_KEY_EXIT  0x03             /* RUN/STOP */
 #define PLAT_NAME      "C64"

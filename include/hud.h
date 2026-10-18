@@ -12,12 +12,22 @@
  * hud_u16 ~860 cycles for 2 digits, ~2000 for 5; hud_bcd ~30 a byte.
  * Use conio (clrscr, cputs) for the static text and these in the game loop.
  * Strings are as in the C source: ASCII on the Atari, PETSCII on the C64.
+ *
+ * Commander X16: no second screen; under x16emu the HUD (the KERNAL text
+ * screen, conio labels included) goes to stdout (hud_flush), on a real X16
+ * these do nothing.
  */
 
 #define HUD_COLS 40
 
 /* Find the screen RAM; after clrscr() or any change of screen. */
 void hud_init(void);
+
+/* Commander X16 under x16emu: the text screen rows that changed since the
+ * last time, to the emulator's stdout (the writes below also call it, at
+ * most once every 60 VERA frames).  Elsewhere it does nothing: the host
+ * screen is the HUD. */
+void hud_flush(void);
 
 void __fastcall__ hud_puts(unsigned char x, unsigned char y, const char *s);
 

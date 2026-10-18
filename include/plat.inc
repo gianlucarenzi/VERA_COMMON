@@ -13,6 +13,13 @@
 ;          on the stack: IRQ_ENTER pushes A, X, Y itself
 ;   C64    the KERNAL ($FF48) pushes A, X, Y and jumps through CINV ($0314);
 ;          $EA81 pulls them and returns
+;   X16    the ROM pushes A, X, Y and jumps through CINV ($0314); the KERNAL
+;          handler there takes every IRQ for the VERA VBLANK (keyboard,
+;          joystick, clock) and acknowledges it
+;
+; IRQ_OURS_END: the end of an IRQ the hook served (pending = its sources).
+; On the X16 a VSYNC goes on to the KERNAL too, or keyboard and joystick
+; would stop; elsewhere it is IRQ_RETURN.
 
 .ifdef __ATARI__
 
@@ -59,6 +66,41 @@ IRQ_VECTOR              = $0314                     ; CINV
         jmp $EA81                                   ; pla tay pla tax pla rti
 .endmacro
 
+.elseif .defined(__CX16__)
+
+IRQ_VECTOR              = $0314                     ; CINV
+
+.macro  IRQ_ENTER
+.endmacro
+
+.macro  IRQ_CHAIN old
+        jmp (old)                                   ; 65C02: no page-border bug
+.endmacro
+
+.macro  IRQ_RETURN
+        pla                                         ; the ROM pushed A, X, Y
+        tay
+        pla
+        tax
+        pla
+        rti
+.endmacro
+
+.macro  IRQ_OURS_END old, pending
+        .local ret
+        lda pending
+        lsr a
+        bcc ret
+        jmp (old)                                   ; VSYNC: the KERNAL too
+ret:    IRQ_RETURN
+.endmacro
+
 .else
-.error "libvera: unsupported target (ca65 -t atari or -t c64)"
+.error "libvera: unsupported target (ca65 -t atari, -t c64 or -t cx16)"
+.endif
+
+.ifndef __CX16__
+.macro  IRQ_OURS_END old, pending
+        IRQ_RETURN
+.endmacro
 .endif

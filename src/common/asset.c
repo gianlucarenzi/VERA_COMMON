@@ -15,7 +15,7 @@
 #include "vmem.h"
 #include "asset.h"
 
-#if defined(__C64__)
+#if defined(__C64__) || defined(__CX16__)
 #include <cbm.h>
 #endif
 

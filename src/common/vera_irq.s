@@ -128,7 +128,7 @@ irq_handler:
     sei
     dec busy
 @done:
-    IRQ_RETURN
+    IRQ_OURS_END old_vector, pending
 
 ; Call the vector at vectors+X with A = serviced sources.  No "jmp (abs)":
 ; the vectors are in BSS and may land on a page border, where the 6502 reads
