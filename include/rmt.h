@@ -32,6 +32,16 @@ unsigned char __fastcall__ rmt_init_host(const void *module);
 void rmt_start(void);
 void rmt_stop(void);
 
+/* C64: an RMT song made into a SID register stream at build time
+ * (tools/rmt2sid.py, a .sds file: PAL and NTSC versions): the C64 only
+ * writes SID registers, ~1000 cycles a frame instead of ~1500 (PSG) or
+ * ~2200 (rmt_init_host, the translation on the C64).  The data (loaded by
+ * the program, e.g. asset_load) must stay in memory while it plays; 1 = ok,
+ * 0 = not an .sds file.  rmt_start / rmt_stop as for the other players. */
+unsigned char __fastcall__ rmt_init_sds(const void *sds);
+/* C64: 1 on an NTSC machine (choose the NTSC .sds), 0 on PAL */
+unsigned char rmt_c64_ntsc(void);
+
 /* Switch the output while the music plays: the VERA PSG (rmt_out_psg) or
  * the host's own chip (rmt_out_host).  The tempo is the VERA frame clock
  * either way.  POKEY: during SIO only

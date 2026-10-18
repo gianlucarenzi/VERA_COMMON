@@ -18,7 +18,9 @@
 ; The PSG pitch follows the Atari the song was written on (rmt_palnts: the
 ; POKEY clock of a PAL or NTSC machine), not the host.
 ;
-; Output: this is the core (player clock, start / stop); the output is
+; Player and output: this is the core (player clock, start / stop).  The
+; player is two JMPs (player_play, player_silence) set by rmtrmt.s, the RMT
+; routine, or by rmtsds.s, the SID stream player of the C64; the output is
 ; the target of two JMPs (out_update, out_silence) that an output module
 ; sets: rmtpsg.s (rmt_init, rmt_out_psg: the VERA PSG, psgrmt.s) or the
 ; host one (rmt_init_host, rmt_out_host; Atari: rmtpokey.s, POKEY; C64:
@@ -36,17 +38,12 @@
         .setcpu "6502"
         .include "vera.inc"
 
-        .export rmt_init_core, _rmt_start, _rmt_stop
+        .export _rmt_start, _rmt_stop
         .export _rmt_frames, _rmt_ispeed, _rmt_rate, _rmt_palnts
         .export rmt_palnts := _rmt_palnts
-        .export out_update, out_silence
+        .export player_play, player_silence, out_update, out_silence
         .export pokey_shadow, _rmt_pokey := pokey_shadow
-        .import RASTERMUSICTRACKER
         .import vera_irq_sound, _vera_frame_init
-
-rmt_init    = RASTERMUSICTRACKER+0      ; X/Y = module, A = song line
-rmt_play    = RASTERMUSICTRACKER+3
-rmt_silence = RASTERMUSICTRACKER+9
 
 VERA_FRAME_RATE = 60                    ; nominal VERA frames a second
 
@@ -65,31 +62,6 @@ acc:            .res 1          ; tempo accumulator
 calls:          .res 1
 
         .segment "CODE"
-
-; ---------------------------------------------------------------------------
-; rmt_init_core: A/X = module (the output modules' rmt_init*, once they set
-; the output).  Music stopped first.  Returns A = instrument speed (1..4),
-; X = 0.
-rmt_init_core:
-        pha
-        txa
-        pha
-        jsr _rmt_stop
-        pla                             ; X = lo, Y = hi for the player
-        tay
-        pla
-        tax
-        lda #0                          ; from song line 0
-        jsr rmt_init                    ; A = instrument speed
-        cmp #1                          ; clamp to 1..4 (RMT format range)
-        bcs @lo
-        lda #1
-@lo:    cmp #5
-        bcc @hi
-        lda #4
-@hi:    sta _rmt_ispeed
-        ldx #0
-        rts
 
 ; ---------------------------------------------------------------------------
 ; void rmt_start(void): the music plays from the VERA frame clock
@@ -124,7 +96,7 @@ _rmt_stop:
         sta on
         sta vera_irq_sound+1            ; callback off
         plp
-        jsr rmt_silence
+        jsr player_silence
 out_silence:
         jmp no_out                      ; the output's silence (rmtpsg.s, ...)
 
@@ -142,7 +114,7 @@ frame:
         sta acc
         lda _rmt_ispeed
         sta calls
-@play:  jsr rmt_play                    ; writes pokey_shadow
+@play:  jsr player_play                 ; RMT: writes pokey_shadow
         dec calls
         bne @play
         inc _rmt_frames
@@ -155,4 +127,10 @@ frame:
 out_update:
         jmp no_out                      ; the output's update: channel state
                                         ; -> PSG voices, POKEY or SID
+; the player: rmtrmt.s (the RMT routine, rmt_init_core) or rmtsds.s (C64:
+; a SID register stream made at build time, rmt_init_sds)
+player_play:
+        jmp no_out
+player_silence:
+        jmp no_out
 no_out: rts

@@ -42,12 +42,12 @@ C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
           src/common/vbm.c src/common/vtm_loader.c
 AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
           src/common/vtfont.s src/common/hud.s src/$(PLATFORM)/plat_$(PLATFORM).s \
-          src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtpsg.s src/rmt/rmtio.s
+          src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s src/rmt/rmtpsg.s src/rmt/rmtio.s
 # rmt_out_host: the music on the host chip (Atari POKEY, C64 SID)
 ifeq ($(PLATFORM),atari)
 AS_SRC += src/atari/rmtpokey.s
 else ifeq ($(PLATFORM),c64)
-AS_SRC += src/c64/rmtsid.s
+AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
 endif
 OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \

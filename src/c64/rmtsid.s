@@ -28,6 +28,9 @@
         .setcpu "6502"
 
         .export _rmt_init_host, _rmt_out_host, _sid_ntsc
+.ifdef RMTSID_TRACE
+        .export _sid_restart
+.endif
         .import rmt_init_core, _rmt_stop, out_update, out_silence
         .import pokey_shadow
         .import sidtab_lo, sidtab_hi
@@ -43,6 +46,9 @@ WAVE_NOISE  = $80
 GATE        = $01
 
         .segment "BSS"
+.ifdef RMTSID_TRACE
+_sid_restart:   .res 1          ; bit v: voice v restarted (gate off, on)
+.endif
 
 _sid_voices:    .res 1          ; SID voices played: 3, or 6 with a second SID
 _sid_frames:    .res 2          ; frames played
@@ -157,6 +163,9 @@ _rmt_out_host:
 
 ; the last line is $37 on PAL (312 lines), $05/$06 on NTSC (262/263 lines)
 detect_video:
+.ifdef RMTSID_LASTLINE                 ; offline conversion (rmt2sid.py, sim65,
+        lda #RMTSID_LASTLINE            ; no VIC-II): $37 PAL, $06 NTSC
+.else
         php
         sei
 @l1:    lda VIC_RASTER
@@ -164,6 +173,7 @@ detect_video:
         beq @l2
         bmi @l1
         plp
+.endif
         sta lines                       ; last line + 1: 312, 262 or 263
         ldx #1
         stx lines+1
@@ -745,6 +755,13 @@ simple_mask:
         ldy voice
         sta v_wave,y
         sta sidbase+4,x                 ; gate off
+.ifdef RMTSID_TRACE                     ; rmt2sid.py: the voices restarted
+        pha                             ; in this frame
+        lda voice_bit,y
+        ora _sid_restart
+        sta _sid_restart
+        pla
+.endif
         ora #GATE
         sta sidbase+4,x                 ; gate on: attack from the current level
         ldy src
