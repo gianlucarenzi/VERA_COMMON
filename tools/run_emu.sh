@@ -10,6 +10,20 @@
 #      screenshot of both windows (<file>-main.png, <file>-vera.png) and quit.
 
 name="$1"; shift
+
+# the monitor to use (x y w h): the primary one (several monitors at home),
+# else the whole screen. EMU_MONITOR=<xrandr name> picks another one.
+monitor() {
+	xrandr --listmonitors 2>/dev/null | awk -v want="$EMU_MONITOR" '
+		NR > 1 { split($3, g, /[\/x+]/)	# w/mmw x h/mmh + x + y
+			if (want != "" ? $NF == want : $2 ~ /\*/) { print g[5], g[6], g[1], g[3]; exit } }'
+}
+geo=$(monitor)
+[ -n "$geo" ] || geo="0 0 $(xdpyinfo | awk '/dimensions/ { split($2, d, "x"); print d[1], d[2] }')"
+read mx my sw sh <<EOF
+$geo
+EOF
+
 "$@" > "${EMU_LOG:-/dev/null}" 2>&1 &
 pid=$!
 
@@ -22,18 +36,15 @@ find_win() {			# $1 = name regexp, $2 = tries of 0.1 s
 	done
 }
 
-sw=$(xdpyinfo | awk '/dimensions/ { split($2, d, "x"); print d[1] }')
-sh=$(xdpyinfo | awk '/dimensions/ { split($2, d, "x"); print d[2] }')
-
 main=$(find_win "$name")
 vera=$(find_win 'VERA' 20)	# the X16 has none
 if [ -n "$main" ]; then
-	wmctrl -i -r "$main" -e 0,0,24,-1,-1
+	wmctrl -i -r "$main" -e 0,$mx,$((my + 24)),-1,-1
 	wmctrl -i -r "$main" -b add,above
 fi
 if [ -n "$vera" ]; then
 	# VERA 640x480 at the bottom-right, above the bottom panel (24 px)
-	wmctrl -i -r "$vera" -e 0,$((sw - 640)),$((sh - 24 - 480 - 30)),-1,-1
+	wmctrl -i -r "$vera" -e 0,$((mx + sw - 640)),$((my + sh - 24 - 480 - 30)),-1,-1
 	wmctrl -i -r "$vera" -b add,above
 fi
 [ -n "$main" ] && xdotool windowactivate --sync "$(printf %d "$main")" 2>/dev/null

@@ -28,8 +28,14 @@ C1541    ?= c1541
 ATARI800 ?= atari800
 VICE     ?= x64sc
 X16EMU   ?= x16emu
+# x16emu CPU clock: 4 MHz, at 8 x16emu is below real time on our PCs
+X16_MHZ  ?= 4
+# Projects dir: ~/Progetti, or ~/Progetti-CVS when ~/Progetti is a symlink
+ifndef PROJECTS
+PROJECTS := $(shell if [ -L $(HOME)/Progetti ]; then echo $(HOME)/Progetti-CVS; else echo $(HOME)/Progetti; fi)
+endif
 # the PBI ROM of the card (atari800 needs it to map the card)
-VERA_ROM ?= $(HOME)/Progetti/ATARI/VERA_ATARI_PBI/vera_pbi_handler.rom
+VERA_ROM ?= $(PROJECTS)/ATARI/VERA_ATARI_PBI/vera_pbi_handler.rom
 
 B        = build/$(PLATFORM)
 RMT_TRACKS = 4
@@ -192,7 +198,7 @@ run-c64:
 
 run-x16:
 	$(MAKE) PLATFORM=cx16 one
-	$(X16EMU) -scale 2 -fsroot build/cx16/disk -prg build/cx16/disk/TESTLIB.PRG -run
+	$(X16EMU) -mhz $(X16_MHZ) -scale 2 -fsroot build/cx16/disk -prg build/cx16/disk/TESTLIB.PRG -run
 
 # --- FAT32 SD test -----------------------------------------------------------
 
