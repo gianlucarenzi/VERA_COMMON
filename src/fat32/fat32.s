@@ -5,6 +5,7 @@
 ;-----------------------------------------------------------------------------
 
 
+.include "seg.inc"
 .include "lib.inc"
 .include "sdcard.inc"
 .include "text_input.inc"
@@ -82,7 +83,7 @@ FS_SIZE      = 64
 .error "struct fs too big!"
 .endif
 
-.segment "BSS"
+FAT32_BSS
 _fat32_bss_start:
 
 fat32_time_year:     .byte 0
@@ -187,7 +188,7 @@ _fat32_bss_end:
 .export fat32_get_lba
 .export fat32_get_cluster
 
-.code
+FAT32_CODE
 
 ;-----------------------------------------------------------------------------
 ; set_volume

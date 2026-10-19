@@ -28,7 +28,9 @@ LIBVERA_LZS     = $(LIBVERA_DIR)/lzsplayr.o     # link before the lib: SAP/XEX s
 LIBVERA_SD_LIB  = $(LIBVERA_DIR)/libvera_sd.lib # link before the lib: asset.h from the microSD (Atari, C64)
 LIBVERA_DSK_LIB = $(LIBVERA_DIR)/libvera_dsk.lib # link before the lib: asset.h from a DOS 2 disk, music safe (Atari)
 LIBVERA_RMT8_LIB = $(LIBVERA_DIR)/libvera_rmt8.lib # link before the lib: RMT8 (stereo) songs, Atari rmt_init_hybrid
-LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM).cfg
+# Atari: LIBVERA_RAMBO = 1 (needed with LIBVERA_SD_LIB) -> cfg/atari-rambo.cfg,
+# the FAT32 code in a RAMbo bank (src/atari/sdbank.s)
+LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo)).cfg
 
 LIBVERA_CFLAGS  = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_C)
 LIBVERA_ASFLAGS = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_ASM)

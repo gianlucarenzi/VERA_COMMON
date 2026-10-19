@@ -3,12 +3,13 @@
 ; Copyright (C) 2020 Frank van den Hoef
 ;-----------------------------------------------------------------------------
 
+.include "seg.inc"
 	.include "lib.inc"
 	.include "sdcard.inc"
 
 	.export sector_buffer, sector_buffer_end, sector_lba, sdcard_set_fast_mode
 
-	.bss
+	FAT32_BSS
 cmd_idx = sdcard_param
 cmd_arg = sdcard_param + 1
 cmd_crc = sdcard_param + 5
@@ -27,7 +28,7 @@ sd_fast:
 
 timeout_cnt:       .byte 0
 
-	.code
+	FAT32_CODE
 
 ;-----------------------------------------------------------------------------
 ; wait ready

@@ -52,7 +52,7 @@ AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
           src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s src/rmt/rmtpsg.s src/rmt/rmtio.s
 # rmt_out_host: the music on the host chip (Atari POKEY, C64 SID)
 ifeq ($(PLATFORM),atari)
-AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s
+AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s src/atari/xexchunks.s
 else ifeq ($(PLATFORM),c64)
 AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
@@ -74,9 +74,12 @@ RMT8_OBJS = $(patsubst src/%.s,$(B)/rmt8/%.o,$(RMT8_SRC))
 # FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
 # VERA_BASE: $D100 on Atari, $DF00 on C64 (default), $9F20 on X16
 # PETSCII: only on C64 and X16 (Atari uses ASCII natively)
+# Atari: in a RAMbo bank (FAT32_BANKED, src/fat32/seg.inc), called through
+# the trampolines of src/atari/sdbank.s
 ifeq ($(PLATFORM),atari)
 FAT32_VERA_BASE = 0xD100
 FAT32_PETSCII =
+FAT32_BANK = -D FAT32_BANKED=1
 else ifeq ($(PLATFORM),c64)
 FAT32_VERA_BASE = $(VERA_BASE)
 FAT32_PETSCII = -D PETSCII=1
@@ -86,10 +89,13 @@ FAT32_PETSCII = -D PETSCII=1
 endif
 
 FAT32_OBJS = $(patsubst src/fat32/%.s,$(B)/fat32_%.o,$(wildcard src/fat32/*.s))
+ifeq ($(PLATFORM),atari)
+FAT32_OBJS += $(B)/atari/sdbank.o
+endif
 
 $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 	@mkdir -p $(B)
-	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) \
+	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) $(FAT32_BANK) \
 	    -I src/fat32 -I include -o $@ $<
 
 HEADERS = $(wildcard include/*.h)
@@ -244,6 +250,9 @@ $(B)/test_sdfs.o: tests/test_sdfs.c $(HEADERS)
 $(B)/test_sdfs_minimal.o: tests/test_sdfs_minimal.c $(HEADERS)
 	$(CC65) $(CFLAGS) -o $(B)/test_sdfs_minimal.s $<
 	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_sdfs_minimal.s
+
+# the FAT32 code: on the Atari in a RAMbo bank, cfg/atari-rambo.cfg
+$(SD_TEST_EXE) $(B)/test_sdfs_minimal.$(EXE) $(B)/test_rastan_sd.$(EXE): LIBVERA_RAMBO = 1
 
 $(SD_TEST_EXE): $(B)/test_sdfs.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
 	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_sdfs.map -o $@ \

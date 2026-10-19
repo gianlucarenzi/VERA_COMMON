@@ -6,6 +6,7 @@
 ; PETSCII: the names are converted to ASCII on the way in.
 ;-----------------------------------------------------------------------------
 
+.include "seg.inc"
 .include "lib.inc"
 
 .import sdcard_init
@@ -15,17 +16,27 @@
 .import fat32_dirent, fat32_size, fat32_errno
 .import popax
 
+.ifdef FAT32_BANKED
+; in the RAMbo bank (seg.inc): the C names are the trampolines of
+; src/atari/sdbank.s, which call these with the bank in
+.export bk_sd_mount := _sd_mount, bk_sd_open := _sd_open, bk_sd_read := _sd_read
+.export bk_sd_read_vram := _sd_read_vram, bk_sd_close := _sd_close
+.export bk_sd_opendir := _sd_opendir, bk_sd_readdir := _sd_readdir
+.export bk_sd_chdir := _sd_chdir, bk_sd_errno := _sd_errno
+.export bk_sd_dirent := fat32_dirent
+.else
 .export _sd_mount, _sd_open, _sd_read, _sd_read_vram, _sd_close
 .export _sd_opendir, _sd_readdir, _sd_chdir, _sd_errno
 .export _sd_dirent := fat32_dirent
+.endif
 
 VERA_DATA0  = VERA_BASE + $03
 NAME_MAX    = 128
 
-.segment "BSS"
+FAT32_BSS
 name_buf:   .res NAME_MAX           ; the name, in ASCII
 
-.segment "CODE"
+FAT32_CODE
 
 ; C = 1 -> A/X = 1, else 0
 ret_carry:

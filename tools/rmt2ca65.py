@@ -18,7 +18,10 @@ Pointers relocated:
 The source also exports rmt_song_tracks (4 or 8): the player checks it at
 link time against the track count it was built for (RMT_TRACKS).
 
-usage: rmt2ca65.py input.rmt output.s [label]
+usage: rmt2ca65.py input.rmt output.s [label [segment]]
+(segment: RODATA by default; LOWRODATA puts it below $4000 on the Atari,
+cfg/atari-rambo.cfg, when MAIN has no room for it; it is read by the interrupt,
+so not in the RAMbo window)
 """
 import struct
 import sys
@@ -34,6 +37,7 @@ def main():
         die("usage: rmt2ca65.py input.rmt output.s [label]")
     src, dst = sys.argv[1], sys.argv[2]
     label = sys.argv[3] if len(sys.argv) > 3 else "_rmt_song"
+    segment = sys.argv[4] if len(sys.argv) > 4 else "RODATA"
 
     raw = open(src, "rb").read()
     if raw[:2] != b"\xff\xff":
@@ -101,7 +105,7 @@ def main():
     out.append("")
     out.append("        .export %s" % label)
     out.append("        .export rmt_song_tracks = %d" % tracks)
-    out.append("        .segment \"RODATA\"")
+    out.append("        .segment \"%s\"" % segment)
     out.append("%s:" % label)
     i = 0
     line = []

@@ -3,6 +3,7 @@
 ;----------------------------------------------------------------------
 ; (C)2020 Michael Steil, License: 2-clause BSD
 
+.include "seg.inc"
 .include "regs.inc"
 
 .export filename_char_ucs2_to_internal, filename_char_internal_to_ucs2
@@ -13,12 +14,12 @@
 .import to_lower
 .import skip_mask
 
-.bss
+FAT32_BSS
 
 char_tmp:
 	.byte 0
 
-.code
+FAT32_CODE
 
 ;-----------------------------------------------------------------------------
 ; filename_char_ucs2_to_internal
