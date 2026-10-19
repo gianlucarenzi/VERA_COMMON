@@ -27,10 +27,18 @@ EOF
 "$@" > "${EMU_LOG:-/dev/null}" 2>&1 &
 pid=$!
 
+# pid and its descendants: the command may be a make or a shell that starts
+# the emulator
+tree() {
+	echo "$1"
+	for c in $(pgrep -P "$1"); do tree "$c"; done
+}
+
 find_win() {			# $1 = name regexp, $2 = tries of 0.1 s
 	i=0
 	while [ $i -lt "${2:-100}" ]; do
-		id=$(wmctrl -lp | awk -v p="$pid" -v n="$1" '$3 == p && tolower($0) ~ tolower(n) { print $1; exit }')
+		ps=" $(tree "$pid" | tr '\n' ' ')"
+		id=$(wmctrl -lp | awk -v ps="$ps" -v n="$1" 'index(ps, " " $3 " ") && tolower($0) ~ tolower(n) { print $1; exit }')
 		[ -n "$id" ] && { echo "$id"; return; }
 		i=$((i + 1)); sleep 0.1
 	done

@@ -6,8 +6,10 @@
 ; IRQ entry contract, the same on every host once these macros are used:
 ;   a handler installed on IRQ_VECTOR starts with IRQ_ENTER; after it A, X
 ;   and Y are saved and may be changed.  It ends either with IRQ_CHAIN
-;   old_vector (not ours: the previous handler runs with the registers as at
-;   entry) or with IRQ_RETURN (ours: registers restored, RTI).
+;   old_jmp (not ours: the previous handler runs with the registers as at
+;   entry; old_jmp is a JMP abs instruction in RAM whose operand is the old
+;   vector, never a "jmp (abs)": on the NMOS 6502 that breaks when the
+;   vector lands on $xxFF) or with IRQ_RETURN (ours: registers restored, RTI).
 ;
 ;   Atari  the OS reaches VIMIRQ ($0216) by JMP (VIMIRQ) with only P and PC
 ;          on the stack: IRQ_ENTER pushes A, X, Y itself
@@ -39,7 +41,7 @@ IRQ_VECTOR              = $0216                     ; VIMIRQ
         pla
         tax
         pla
-        jmp (old)
+        jmp old
 .endmacro
 
 .macro  IRQ_RETURN
@@ -59,7 +61,7 @@ IRQ_VECTOR              = $0314                     ; CINV
 .endmacro
 
 .macro  IRQ_CHAIN old
-        jmp (old)
+        jmp old
 .endmacro
 
 .macro  IRQ_RETURN
@@ -74,7 +76,7 @@ IRQ_VECTOR              = $0314                     ; CINV
 .endmacro
 
 .macro  IRQ_CHAIN old
-        jmp (old)                                   ; 65C02: no page-border bug
+        jmp old
 .endmacro
 
 .macro  IRQ_RETURN
@@ -91,7 +93,7 @@ IRQ_VECTOR              = $0314                     ; CINV
         lda pending
         lsr a
         bcc ret
-        jmp (old)                                   ; VSYNC: the KERNAL too
+        jmp old                                     ; VSYNC: the KERNAL too
 ret:    IRQ_RETURN
 .endmacro
 

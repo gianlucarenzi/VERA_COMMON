@@ -52,9 +52,16 @@ IRQ_MASK        = $0F                   ; IEN/ISR bits 3:0 = AFLOW|SPRCOL|LINE|V
     .export _vera_lines_since
     .export vera_irq_sound, vera_irq_sfx, vera_irq_pcm
 
+    .segment "DATA"
+
+; the previous handler, reached through a JMP abs (old_jmp) whose operand is
+; old_vector: a "jmp (old_vector)" breaks on the NMOS 6502 when the vector
+; lands on $xxFF, which depends on the link
+old_jmp:        .byte $4C               ; JMP
+old_vector:     .word 0
+
     .segment "BSS"
 
-old_vector:     .res 2
 old_ien:        .res 1                  ; IEN before the hook (X16: the KERNAL's VSYNC)
 vectors:                                ; called through call_vector
 user_cb:        .res 2
@@ -81,7 +88,7 @@ irq_handler:
     and VERA_IEN
     and #IRQ_MASK
     bne @ours
-    IRQ_CHAIN old_vector        ; not the VERA: the host handles it
+    IRQ_CHAIN old_jmp           ; not the VERA: the host handles it
 
 @ours:
     sta pending
@@ -145,7 +152,7 @@ irq_handler:
     sei
     dec busy
 @done:
-    IRQ_OURS_END old_vector, pending
+    IRQ_OURS_END old_jmp, pending
 
 ; Call the vector at vectors+X with A = serviced sources.  No "jmp (abs)":
 ; the vectors are in BSS and may land on a page border, where the 6502 reads
