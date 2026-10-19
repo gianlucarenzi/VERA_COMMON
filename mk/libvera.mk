@@ -8,7 +8,8 @@
 #   	$(LD65) $(LIBVERA_LDFLAGS) -o $@ main.o $(LIBVERA_LIB) $(PLATFORM).lib
 #
 # The library is built by `make -C $(VERA_COMMON)` (both hosts).
-# C64: VERA_BASE=0xDF00 for a card in IO2 (rebuild the library with it too).
+# C64: the card at $DF00 (IO2, its GeoRAM at $DE00); VERA_BASE=0xDE00 for a
+# card in IO1 without GeoRAM (rebuild the library with it too).
 
 PLATFORM ?= atari
 ifeq ($(filter atari c64 cx16,$(PLATFORM)),)
@@ -16,7 +17,7 @@ $(error PLATFORM must be atari, c64 or cx16, not '$(PLATFORM)')
 endif
 
 ifeq ($(PLATFORM),c64)
-VERA_BASE ?= 0xDE00
+VERA_BASE ?= 0xDF00
 LIBVERA_BASE_C   = -DVERA_BASE=$(VERA_BASE)u
 LIBVERA_BASE_ASM = -D 'VERA_BASE=$$$(patsubst 0x%,%,$(patsubst 0X%,%,$(VERA_BASE)))'
 endif

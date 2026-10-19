@@ -72,7 +72,7 @@ endif
 RMT8_OBJS = $(patsubst src/%.s,$(B)/rmt8/%.o,$(RMT8_SRC))
 
 # FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
-# VERA_BASE: $D100 on Atari, $DE00 on C64 (default), $9F20 on X16
+# VERA_BASE: $D100 on Atari, $DF00 on C64 (default), $9F20 on X16
 # PETSCII: only on C64 and X16 (Atari uses ASCII natively)
 ifeq ($(PLATFORM),atari)
 FAT32_VERA_BASE = 0xD100
@@ -219,7 +219,7 @@ run-atari:
 
 run-c64:
 	$(MAKE) PLATFORM=c64 one
-	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDE00) +VICIIdsize -windowwidth 400 -windowheight 300 \
+	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDF00) +VICIIdsize -windowwidth 400 -windowheight 300 \
 	    +drive8truedrive -trapdevice8 -autostart vera-c64.d64
 
 run-x16:

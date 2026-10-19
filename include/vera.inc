@@ -5,7 +5,9 @@
 ; Only the base of the 32 registers depends on the host:
 ;   Atari  $D100 (PBI device space; the registers answer whether or not the
 ;          $D1FF latch selects the card: the latch only maps its ROM)
-;   C64    $DE00 (IO1) or $DF00 (IO2, -D VERA_BASE=$DF00)
+;   C64    $DF00 (IO2, registers $DF00-$DF1F only: the GeoRAM of the card
+;          uses $DE00-$DEFF and $DF80-$DFFF), or $DE00 (IO1, no GeoRAM)
+;          with -D VERA_BASE=$DE00
 ;   X16    $9F20
 ; ca65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
 
@@ -15,7 +17,7 @@ VERA_BASE               = $D100                     ; PBI (atari800: -verax16)
 .elseif .defined(__CX16__)
 VERA_BASE               = $9F20                     ; on the board
 .else
-VERA_BASE               = $DE00                     ; IO1 (VICE: -vera -verabase 0xde00)
+VERA_BASE               = $DF00                     ; IO2 (VICE: -vera, base 0xdf00)
 .endif
 .endif
 

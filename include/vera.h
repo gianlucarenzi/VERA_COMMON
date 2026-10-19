@@ -3,7 +3,8 @@
  *
  * Only the base of the 32 registers depends on the host (see vera.inc):
  *   Atari  $D100 (PBI device space)
- *   C64    $DE00 (IO1), or $DF00 with -DVERA_BASE=0xDF00u (IO2)
+ *   C64    $DF00 (IO2, the GeoRAM of the card at $DE00), or $DE00 with
+ *          -DVERA_BASE=0xDE00u (IO1, no GeoRAM)
  *   X16    $9F20
  * cc65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
  */
@@ -15,7 +16,7 @@
 #if defined(__ATARI__)
 #define VERA_BASE 0xD100u
 #elif defined(__C64__)
-#define VERA_BASE 0xDE00u
+#define VERA_BASE 0xDF00u
 #elif defined(__CX16__)
 #define VERA_BASE 0x9F20u
 #else

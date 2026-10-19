@@ -209,12 +209,13 @@ tools/run-vice.sh vera-c64.d64
 ### Select VERA Card Location
 
 The VERA card can be at two addresses:
-- `0xDE00` (IO1, default)
-- `0xDF00` (IO2)
+- `0xDF00` (IO2, default): registers $DF00-$DF1F only; the GeoRAM (512 KB)
+  of the card uses $DE00-$DEFF and $DF80-$DFFF. VICE: `-vera` enables both.
+- `0xDE00` (IO1): no GeoRAM (VICE: `-vera -verabase 0xDE00`)
 
 ```bash
-make                        # Compile for $DE00
-make VERA_BASE=0xDF00       # Compile for $DF00
+make                        # Compile for $DF00
+make VERA_BASE=0xDE00       # Compile for $DE00
 ```
 
 ### Select Display
@@ -323,7 +324,7 @@ make clean              # Removes gen/, testrmt.prg, rmtplay.prg
 
 The program cannot find the VERA card. Possible causes:
 - VICE launched without `-vera` flag
-- Wrong VERA card address (try `VERA_BASE=0xDF00`)
+- Wrong VERA card address (try `VERA_BASE=0xDE00`)
 - VERA not supported in your VICE build
 
 **Solution:**
@@ -332,8 +333,8 @@ The program cannot find the VERA card. Possible causes:
 x64sc -vera -autostart testrmt.prg &
 
 # Or compile for the other address
-make VERA_BASE=0xDF00 clean
-make VERA_BASE=0xDF00 testrmt.prg
+make VERA_BASE=0xDE00 clean
+make VERA_BASE=0xDE00 testrmt.prg
 ```
 
 ### Error: "Unknown file format" or "No such file"
