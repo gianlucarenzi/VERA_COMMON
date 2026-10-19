@@ -50,6 +50,15 @@ unsigned char rmt_c64_ntsc(void);
 void rmt_out_psg(void);
 void rmt_out_host(void);
 
+/* RMT8 (stereo) songs: link $(LIBVERA_RMT8_LIB) before libvera.lib (the
+ * player built for 8 tracks) and compile with -DRMT_TRACKS=8.  rmt_init
+ * plays the 8 tracks on PSG voices 0-7 (X16, any host).  Atari:
+ * rmt_init_hybrid / rmt_out_hybrid put tracks 1-4 (left POKEY) on the
+ * Atari's POKEY and 5-8 (right POKEY) on PSG voices 4-7; during SIO the
+ * POKEY keeps channels 1+2 as with rmt_out_host. */
+unsigned char __fastcall__ rmt_init_hybrid(const void *module);
+void rmt_out_hybrid(void);
+
 /* Atari, POKEY output: bracket the transfers of an SIO driver that does not
  * set CRITIC (sio.s does it itself; the OS SIO sets CRITIC). */
 void rmt_io_begin(void);
@@ -69,6 +78,7 @@ extern const unsigned char rmt_tracks;                  /* tracks the player was
 void psg_silence(void);                                 /* PSG voices at volume 0 */
 extern volatile unsigned char psg_enable;               /* 1 = voices follow the player */
 extern volatile unsigned char psg_stereo;               /* 1 = stereo pan */
+extern volatile unsigned char psg_hybrid;               /* 1 = PSG voices 0-3 silent (POKEY plays them) */
 extern volatile unsigned char psg_volume[RMT_TRACKS];   /* VERA level of the voices (0..63) */
 
 #endif

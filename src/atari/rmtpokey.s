@@ -17,6 +17,7 @@
         .setcpu "6502"
 
         .export _rmt_init_host, _rmt_out_host
+        .export pokey_update := update, pokey_silence := silence   ; rmthyb.s
         .import rmt_init_core, _rmt_stop, out_update, out_silence
         .import pokey_shadow, rmt_ioactive
 

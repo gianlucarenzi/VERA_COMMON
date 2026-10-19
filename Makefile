@@ -42,7 +42,8 @@ RMT_TRACKS = 4
 
 CFLAGS  = $(LIBVERA_CFLAGS) -Osir
 ASFLAGS = $(LIBVERA_ASFLAGS) -I src/rmt --bin-include-dir fonts \
-          -D RMT_SHADOW -D RMT_VERA -D RMT_TRACKS=$(RMT_TRACKS)
+          -D RMT_SHADOW -D RMT_VERA
+ASFLAGS4 = -D RMT_TRACKS=$(RMT_TRACKS)
 
 C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
           src/common/vbm.c src/common/vtm_loader.c
@@ -58,6 +59,16 @@ HOST_OBJS = $(B)/sidtab.o
 endif
 OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \
           $(B)/psgtab.o $(HOST_OBJS)
+
+# libvera_rmt8.lib: the RMT player and its outputs built for 8 tracks (RMT8,
+# stereo songs), linked before libvera.lib.  Atari: + rmt_init_hybrid
+# (tracks 1-4 on POKEY, 5-8 on the VERA PSG)
+RMT8_SRC = src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s \
+           src/rmt/rmtpsg.s src/rmt/rmtio.s
+ifeq ($(PLATFORM),atari)
+RMT8_SRC += src/atari/rmtpokey.s src/atari/rmthyb.s
+endif
+RMT8_OBJS = $(patsubst src/%.s,$(B)/rmt8/%.o,$(RMT8_SRC))
 
 # FAT32 assembly modules (must be assembled with -t none to keep ASCII chars)
 # VERA_BASE: $D100 on Atari, $DE00 on C64 (default), $9F20 on X16
@@ -93,7 +104,7 @@ all:
 one: lib test disk
 
 lib: $(LIBVERA_LIB) $(LIBVERA_LZS) $(if $(filter cx16,$(PLATFORM)),,$(LIBVERA_SD_LIB)) \
-     $(if $(filter atari,$(PLATFORM)),$(LIBVERA_DSK_LIB))
+     $(if $(filter atari,$(PLATFORM)),$(LIBVERA_DSK_LIB)) $(LIBVERA_RMT8_LIB)
 
 $(LIBVERA_LIB): $(OBJS)
 	rm -f $@
@@ -103,6 +114,14 @@ $(LIBVERA_LIB): $(OBJS)
 $(LIBVERA_DSK_LIB): $(B)/atari/asset_dsk.o $(B)/atari/sio.o
 	rm -f $@
 	$(AR65) a $@ $^
+
+$(LIBVERA_RMT8_LIB): $(RMT8_OBJS)
+	rm -f $@
+	$(AR65) a $@ $^
+
+$(B)/rmt8/%.o: src/%.s $(ASINC)
+	@mkdir -p $(dir $@)
+	$(CA65) $(ASFLAGS) -D RMT_TRACKS=8 -o $@ $<
 
 # the asset.h functions on the microSD and the FAT32 code they use
 $(LIBVERA_SD_LIB): $(B)/common/asset_sd.o $(FAT32_OBJS)
@@ -116,7 +135,7 @@ $(B)/%.o: src/%.c $(HEADERS)
 
 $(B)/%.o: src/%.s $(ASINC)
 	@mkdir -p $(dir $@)
-	$(CA65) $(ASFLAGS) -o $@ $<
+	$(CA65) $(ASFLAGS) $(ASFLAGS4) -o $@ $<
 
 $(B)/psgtab.s: tools/mkpsgtab.py
 	@mkdir -p $(B)

@@ -62,7 +62,7 @@
         .export _psg_init, _psg_silence := psg_silence
         .export _psg_enable, _psg_stereo, _psg_hybrid, _psg_volume
         .import trackn_audf, trackn_audc, v_audctl
-        .import psgtab_lo, psgtab_hi, psg_ktab
+        .import psgtab_lo, psgtab_hi, psgtab_map_lo, psgtab_map_hi, psg_ktab
 
 .ifdef RMT_TRACKS
 NCH             = RMT_TRACKS            ; channels = PSG voices driven
@@ -194,15 +194,15 @@ _psg_init:
 @ntsc:  lda #5                          ; NTSC: tables 5-9, constants 21-41
         ldx #21
 @std:   stx kofs
-        clc
-        adc #>psgtab_lo
-        sta tmp
+        sta tmp                         ; std * 5
         ldx #7
-@pg:    lda dist_sk,x                   ; page = (std * 5 + kind) of psgtab_lo
-        clc
-        adc tmp
+@pg:    lda dist_sk,x                   ; [std * 5 + kind]: the page of its
+        clc                             ; table (mkpsgtab.py may keep only
+        adc tmp                         ; the tables a song uses)
+        tay
+        lda psgtab_map_lo,y
         sta page_lo,x
-        adc #10                         ; psgtab_hi follows, 10 pages later
+        lda psgtab_map_hi,y
         sta page_hi,x
         dex
         bpl @pg

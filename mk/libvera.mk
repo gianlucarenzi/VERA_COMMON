@@ -26,6 +26,7 @@ LIBVERA_LIB     = $(LIBVERA_DIR)/libvera.lib
 LIBVERA_LZS     = $(LIBVERA_DIR)/lzsplayr.o     # link before the lib: SAP/XEX songs
 LIBVERA_SD_LIB  = $(LIBVERA_DIR)/libvera_sd.lib # link before the lib: asset.h from the microSD (Atari, C64)
 LIBVERA_DSK_LIB = $(LIBVERA_DIR)/libvera_dsk.lib # link before the lib: asset.h from a DOS 2 disk, music safe (Atari)
+LIBVERA_RMT8_LIB = $(LIBVERA_DIR)/libvera_rmt8.lib # link before the lib: RMT8 (stereo) songs, Atari rmt_init_hybrid
 LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM).cfg
 
 LIBVERA_CFLAGS  = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_C)

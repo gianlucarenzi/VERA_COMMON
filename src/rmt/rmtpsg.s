@@ -7,7 +7,7 @@
 
         .export _rmt_init, _rmt_out_psg
         .import rmt_init_core, _rmt_stop, out_update, out_silence
-        .import psg_update, psg_silence, _psg_init, _psg_enable
+        .import psg_update, psg_silence, _psg_init, _psg_enable, _psg_hybrid
 
         .segment "CODE"
 
@@ -39,6 +39,8 @@ _rmt_out_psg:
         sta out_silence+1
         lda #>psg_silence
         sta out_silence+2
+        lda #0
+        sta _psg_hybrid                 ; every channel on the PSG
         lda #1
         sta _psg_enable                 ; the voices follow the player
         plp
