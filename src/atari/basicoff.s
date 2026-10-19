@@ -13,6 +13,8 @@
 ; OS moves the screen to the top of the RAM and sets MEMTOP.
 ; BASIC already off: nothing.  The chunk is overwritten later by the
 ; program (it loads at $2E00 as the system check does).
+; It also switches the key click off (NOCLIK = 1): the OS click of every key
+; press on the console speaker would sound over the game.
 ; ============================================================================
 
         .export         __BASIC_OFF__: absolute = 1
@@ -21,6 +23,7 @@
 PORTB   = $D301
 RAMTOP  = $6A
 BASICF  = $03F8                 ; 0 = BASIC on after RESET
+NOCLIK  = $02DB                 ; <> 0 = no key click (XL OS)
 INITAD  = $02E2
 CIOV    = $E456
 ICCOM   = $0342                 ; IOCB 0
@@ -37,6 +40,8 @@ CLOSE   = 12
 
         .segment "BASOFF"
 basic_off:
+        lda     #1
+        sta     NOCLIK          ; no key click
         lda     PORTB
         and     #$02
         bne     done            ; BASIC already off
