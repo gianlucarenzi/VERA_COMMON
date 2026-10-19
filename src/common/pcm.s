@@ -5,11 +5,14 @@
 ; A sample (8 bit signed mono, any rate) lies in VRAM (pcm_load: from the
 ; SD / disk straight to VRAM, no RAM).  pcm_play resets the FIFO, fills a
 ; first block and sets the rate; then every VSYNC (vera_irq_pcm, after the
-; music and the PSG effects) copies VRAM -> FIFO through DATA0 until the
-; FIFO is full or BLOCK bytes are written: more than the 103 a frame that
-; 6.1 kHz takes, so the FIFO never runs dry.  ~12 cycles a byte, only while
-; a sample plays.  When it is all in the FIFO the callback is idle; the FIFO
-; plays out by itself.
+; music and the PSG effects) copies a block VRAM -> FIFO through DATA0:
+; 7 * AUDIO_RATE bytes (112 at 6.1 kHz), a little more than the 6.4 *
+; AUDIO_RATE a VERA frame takes, so the FIFO never runs dry and fills by
+; ~9 bytes a frame (a 5.5 KB sample ends < 800 bytes into the 4 KB FIFO).
+; 13 cycles a byte in a tight loop, ~1600 cycles a frame at 6.1 kHz
+; (tests/prof_pcm.c), only while a sample plays; a frame is skipped when
+; the FIFO reads full.  When it is all in the FIFO the callback is idle;
+; the FIFO plays out by itself.
 ;
 ; CTRL, FX_CTRL and the port 0 address are saved and restored (as sfx.s).
 ; ============================================================================
@@ -20,7 +23,6 @@
         .export _pcm_play, _pcm_stop, _pcm_busy
         .import vera_irq_pcm, _vera_frame_init
 
-BLOCK   = 128                   ; bytes a VSYNC at most
 FIRST   = 255                   ; bytes before the rate is set
 VOLUME  = $0F                   ; AUDIO_CTRL volume (max)
 FIFO_FULL = $80                 ; AUDIO_CTRL read: FIFO full
@@ -35,6 +37,8 @@ src_h:  .res 1
 left_l: .res 1                  ; bytes left to put in the FIFO
 left_h: .res 1
 rate:   .res 1
+block:  .res 1                  ; bytes a VSYNC: 7 * rate, at most 255
+count:  .res 1                  ; bytes of this block
 save_ctrl: .res 1
 save_fx:   .res 1
 save_l:    .res 1
@@ -69,6 +73,15 @@ _pcm_play:
         iny
         lda (sp_),y
         sta rate
+        asl a                           ; block = 7 * rate (max 255)
+        asl a
+        asl a
+        bcs @max
+        sec
+        sbc rate
+        bcs @blk
+@max:   lda #255
+@blk:   sta block
         lda #0
         sta VERA_AUDIO_RATE             ; stopped while the FIFO is filled
         lda #($80 | VOLUME)             ; reset the FIFO, 8 bit mono
@@ -123,12 +136,27 @@ tick:
         bne @go
         sta vera_irq_pcm+1              ; all in the FIFO: idle
 @rts:   rts
-@go:    ldx #BLOCK
+@go:    bit VERA_AUDIO_CTRL             ; FIFO full: nothing this frame
+        bmi @rts
+        ldx block
         ; fall through
 
-; copy up to X bytes VRAM -> FIFO (stops when the FIFO is full or the
-; sample ends); saves and restores the VERA state
+; copy min(X, bytes left) bytes VRAM -> FIFO; saves and restores the VERA
+; state
 copy:
+        lda left_h                      ; X = min(X, left), left -= X
+        bne @n
+        cpx left_l
+        bcc @n
+        ldx left_l
+@n:     stx count
+        lda left_l
+        sec
+        sbc count
+        sta left_l
+        bcs @nb
+        dec left_h
+@nb:
         lda VERA_CTRL
         sta save_ctrl
         lda #VERA_DCSEL2
@@ -152,17 +180,10 @@ copy:
         and #$01
         ora #VERA_INC1
         sta VERA_ADDR_H
-@byte:  lda left_l
-        ora left_h
+        ldx count
         beq @end
-        bit VERA_AUDIO_CTRL             ; N = FIFO full
-        bmi @end
-        lda VERA_DATA0
+@byte:  lda VERA_DATA0                  ; 13 cycles a byte
         sta VERA_AUDIO_DATA
-        lda left_l
-        bne @dl
-        dec left_h
-@dl:    dec left_l
         dex
         bne @byte
 @end:   lda VERA_ADDR_L                 ; where the next block starts

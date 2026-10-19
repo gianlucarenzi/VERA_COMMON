@@ -95,7 +95,7 @@ $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
-.PHONY: all one lib test disk run-atari run-c64 run-x16 clean
+.PHONY: all one lib test disk run-atari run-c64 run-x16 clean prof-pcm prof-sfx
 
 all:
 	$(MAKE) PLATFORM=atari one
@@ -278,3 +278,18 @@ run-test-rastan-sd: $(B)/test_rastan_sd.$(EXE) $(SD_IMG)
 
 clean:
 	rm -rf build vera-atari.atr vera-c64.d64 tests/test_fat32.img
+
+# --- CPU cycles of the sound callbacks on sim65 ------------------------------
+
+SIM_FLAGS = -t sim6502 -Osir -I include --asm-include-dir include
+
+prof-pcm:
+	@mkdir -p build/sim
+	$(CL65) $(SIM_FLAGS) -o build/sim/prof_pcm tests/prof_pcm.c src/common/pcm.s tests/sim_pcm_stub.s
+	sim65 build/sim/prof_pcm
+
+prof-sfx:
+	@mkdir -p build/sim
+	$(PYTHON) tools/psgsfx.py tests/sfx_test.py build/sim/sfx_test.s
+	$(CL65) $(SIM_FLAGS) -o build/sim/prof_sfx tests/prof_sfx.c src/common/sfx.s tests/sim_sfx_stub.s build/sim/sfx_test.s
+	sim65 build/sim/prof_sfx
