@@ -43,7 +43,7 @@ RMT_TRACKS = 4
 CFLAGS  = $(LIBVERA_CFLAGS) -Osir
 ASFLAGS = $(LIBVERA_ASFLAGS) -I src/rmt --bin-include-dir fonts \
           -D RMT_SHADOW -D RMT_VERA
-ASFLAGS4 = -D RMT_TRACKS=$(RMT_TRACKS)
+ASFLAGS4 = -D RMT_TRACKS=$(RMT_TRACKS) -D RMT_TUNED
 
 C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
           src/common/vbm.c src/common/vtm_loader.c src/common/pcm_load.c
@@ -61,8 +61,8 @@ OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS
           $(B)/psgtab.o $(HOST_OBJS)
 
 # libvera_rmt8.lib: the RMT player and its outputs built for 8 tracks (RMT8,
-# stereo songs) and with the tuned pure tone table (RMT_TUNED, rmtplayr.s),
-# linked before libvera.lib.  Atari: + rmt_init_hybrid
+# stereo songs), linked before libvera.lib.  Both players use the tuned
+# pure tone table (RMT_TUNED, rmtplayr.s: A = 440 Hz on a PAL POKEY).  Atari: + rmt_init_hybrid
 # (tracks 1-4 on POKEY, 5-8 on the VERA PSG)
 RMT8_SRC = src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s \
            src/rmt/rmtpsg.s src/rmt/rmtio.s
