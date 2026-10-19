@@ -4,3 +4,6 @@ vera-atari.atr
 vera-c64.d64
 # SD card images made by tests/gen_test_image.py
 tests/*.img
+
+# Python bytecode of the tools
+__pycache__/

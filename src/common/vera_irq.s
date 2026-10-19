@@ -16,7 +16,9 @@
 ; and NTSC Ataris and C64s.
 ;
 ; Callbacks: after the sources are acknowledged the hook runs the user
-; callback and then the sound callback (vera_irq_sound, used by rmtdrv.s):
+; callback, then the sound callback (vera_irq_sound, used by rmtdrv.s) and
+; the sound effects callback (vera_irq_sfx, sfx.s) and the PCM samples
+; callback (vera_irq_pcm, pcm.s):
 ; the user one does the work that must fit the vertical blank, the music
 ; (a few hundred to a few thousand cycles) comes after it,
 ; with interrupts enabled (CLI) so that the host's serial IRQs (Atari SIO)
@@ -48,7 +50,7 @@ IRQ_MASK        = $0F                   ; IEN/ISR bits 3:0 = AFLOW|SPRCOL|LINE|V
     .export _vera_frame_wait
     .export _vera_scanline
     .export _vera_lines_since
-    .export vera_irq_sound
+    .export vera_irq_sound, vera_irq_sfx, vera_irq_pcm
 
     .segment "BSS"
 
@@ -57,6 +59,8 @@ old_ien:        .res 1                  ; IEN before the hook (X16: the KERNAL's
 vectors:                                ; called through call_vector
 user_cb:        .res 2
 vera_irq_sound: .res 2                  ; sound callback (asm only), 0 = none
+vera_irq_sfx:   .res 2                  ; sound effects callback (asm only), 0 = none
+vera_irq_pcm:   .res 2                  ; PCM samples callback (asm only), 0 = none
 installed:      .res 1
 busy:           .res 1                  ; the callbacks are running
 flags:          .res 1
@@ -124,8 +128,18 @@ irq_handler:
     jsr call_vector
 @sound:
     lda vera_irq_sound+1        ; then the music, which can take longer
-    beq @end
+    beq @sfx
     ldx #vera_irq_sound - vectors
+    jsr call_vector
+@sfx:
+    lda vera_irq_sfx+1          ; and the sound effects
+    beq @pcm
+    ldx #vera_irq_sfx - vectors
+    jsr call_vector
+@pcm:
+    lda vera_irq_pcm+1          ; and the PCM samples
+    beq @end
+    ldx #vera_irq_pcm - vectors
     jsr call_vector
 @end:
     sei

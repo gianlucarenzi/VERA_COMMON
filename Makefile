@@ -46,13 +46,13 @@ ASFLAGS = $(LIBVERA_ASFLAGS) -I src/rmt --bin-include-dir fonts \
 ASFLAGS4 = -D RMT_TRACKS=$(RMT_TRACKS)
 
 C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
-          src/common/vbm.c src/common/vtm_loader.c
+          src/common/vbm.c src/common/vtm_loader.c src/common/pcm_load.c
 AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
-          src/common/vtfont.s src/common/hud.s src/$(PLATFORM)/plat_$(PLATFORM).s \
+          src/common/vtfont.s src/common/hud.s src/common/sfx.s src/common/pcm.s src/$(PLATFORM)/plat_$(PLATFORM).s \
           src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s src/rmt/rmtpsg.s src/rmt/rmtio.s
 # rmt_out_host: the music on the host chip (Atari POKEY, C64 SID)
 ifeq ($(PLATFORM),atari)
-AS_SRC += src/atari/rmtpokey.s
+AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s
 else ifeq ($(PLATFORM),c64)
 AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
@@ -61,7 +61,8 @@ OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS
           $(B)/psgtab.o $(HOST_OBJS)
 
 # libvera_rmt8.lib: the RMT player and its outputs built for 8 tracks (RMT8,
-# stereo songs), linked before libvera.lib.  Atari: + rmt_init_hybrid
+# stereo songs) and with the tuned pure tone table (RMT_TUNED, rmtplayr.s),
+# linked before libvera.lib.  Atari: + rmt_init_hybrid
 # (tracks 1-4 on POKEY, 5-8 on the VERA PSG)
 RMT8_SRC = src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s \
            src/rmt/rmtpsg.s src/rmt/rmtio.s
@@ -111,7 +112,13 @@ $(LIBVERA_LIB): $(OBJS)
 	$(AR65) a $@ $^
 
 # Atari: the asset.h functions on the raw sectors of a DOS 2 disk, own SIO
-$(LIBVERA_DSK_LIB): $(B)/atari/asset_dsk.o $(B)/atari/sio.o
+# The modules of libvera.lib that call asset.h (ASSET_USERS) are in the asset
+# libraries too: ld65 does not go back to a library, so a program that calls
+# them but not asset_* itself would otherwise get the asset.o of libvera.lib
+# (the disk of the OS) instead of the one of the library it links first.
+ASSET_USERS = $(B)/common/pcm_load.o $(B)/common/vbm.o $(B)/common/vtm_loader.o
+
+$(LIBVERA_DSK_LIB): $(B)/atari/asset_dsk.o $(B)/atari/sio.o $(ASSET_USERS)
 	rm -f $@
 	$(AR65) a $@ $^
 
@@ -121,10 +128,10 @@ $(LIBVERA_RMT8_LIB): $(RMT8_OBJS)
 
 $(B)/rmt8/%.o: src/%.s $(ASINC)
 	@mkdir -p $(dir $@)
-	$(CA65) $(ASFLAGS) -D RMT_TRACKS=8 -o $@ $<
+	$(CA65) $(ASFLAGS) -D RMT_TRACKS=8 -D RMT_TUNED -o $@ $<
 
 # the asset.h functions on the microSD and the FAT32 code they use
-$(LIBVERA_SD_LIB): $(B)/common/asset_sd.o $(FAT32_OBJS)
+$(LIBVERA_SD_LIB): $(B)/common/asset_sd.o $(FAT32_OBJS) $(ASSET_USERS)
 	rm -f $@
 	$(AR65) a $@ $^
 

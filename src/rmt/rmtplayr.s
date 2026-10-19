@@ -208,10 +208,21 @@ frqtabbass2:
         .byte $28,$25,$24,$21,$1F,$1E,$1C,$1B,$19,$17,$16,$15,$13,$12,$11,$10
         .byte $0F,$0E,$0D,$0C,$0B,$0A,$09,$08,$07,$06,$05,$04,$03,$02,$01,$00
 frqtabpure:
+.ifdef RMT_TUNED
+;* -D RMT_TUNED: the AUDF nearest to the equal tempered note (A = 440 Hz) on
+;* a PAL POKEY (64 kHz = 1773447 / 28), note 0 = C3: the original table is
+;* ~15 cents flat in the low octaves (mean error 15 -> 9 cents).  Notes 60-63
+;* silent as in the original.
+        .byte $F1,$E4,$D7,$CB,$BF,$B4,$AA,$A1,$98,$8F,$87,$7F,$78,$71,$6B,$65
+        .byte $5F,$5A,$55,$50,$4B,$47,$43,$3F,$3C,$38,$35,$32,$2F,$2C,$2A,$27
+        .byte $25,$23,$21,$1F,$1D,$1C,$1A,$18,$17,$16,$14,$13,$12,$11,$10,$0F
+        .byte $0E,$0D,$0C,$0C,$0B,$0A,$0A,$09,$09,$08,$07,$07,$00,$00,$00,$00
+.else
         .byte $F3,$E6,$D9,$CC,$C1,$B5,$AD,$A2,$99,$90,$88,$80,$79,$72,$6C,$66
         .byte $60,$5B,$55,$51,$4C,$48,$44,$40,$3C,$39,$35,$32,$2F,$2D,$2A,$28
         .byte $25,$23,$21,$1F,$1D,$1C,$1A,$18,$17,$16,$14,$13,$12,$11,$10,$0F
         .byte $0E,$0D,$0C,$0B,$0A,$09,$08,$07,$06,$05,$04,$03,$02,$01,$00,$00
+.endif
 .if FEAT_BASS16
 frqtabbasshi:
         .byte $0D,$0D,$0C,$0B,$0B,$0A,$0A,$09,$08,$08,$07,$07,$07,$06,$06,$05
