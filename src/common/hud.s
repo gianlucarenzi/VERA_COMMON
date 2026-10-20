@@ -16,12 +16,12 @@
 ; ----------------------------------------------------------------------------
 ; Commander X16: no second screen (its text screen is a VERA layer, the game
 ; uses it).  Under x16emu (detected by $9FBE/$9FBF = "16") the HUD goes to
-; the emulator's stdout: hud_puts / hud_u16 / hud_bcd write into the KERNAL
-; text screen in VRAM ($1B000, 256 bytes a row, char + colour), where the
-; conio labels are too, and hud_flush prints the rows of it (40 x 25) that
-; changed, at most once every 60 VERA frames (called by the writes, or
-; directly).  On a real X16 they do nothing.  The VERA port 0 and CTRL are
-; given back as found.
+; the emulator's stdout (x16emu register $9FBB: a byte written = a character
+; on stdout): hud_puts / hud_u16 / hud_bcd write screen codes into a 40 x 25
+; buffer in RAM, and hud_flush prints the rows of it that changed, at most
+; once every 60 VERA frames (called by the writes, or directly).  Nothing
+; goes to VRAM: the KERNAL text screen area ($1B000-) is free for the game
+; (it was the HUD's buffer until 2026-10-21).  On a real X16 they do nothing.
 ; ----------------------------------------------------------------------------
     .include "vera.inc"
     .import incsp2, incsp4, _vera_irq_count
@@ -30,32 +30,35 @@
 EMU_ID1     = $9FBE                     ; x16emu: "1", "6"
 EMU_ID2     = $9FBF
 EMU_STDOUT  = $9FBB                     ; a byte written = a character on stdout
-TXT_BANK    = $01                       ; KERNAL screen_addr = $1B000
-TXT_PAGE    = $B0
 ROWS        = 25
 COLS        = 40
 SC_ZERO     = $30
+SC_SPACE    = $20
 
     .segment "BSS"
 
 emu:        .res 1                      ; 1 = under x16emu
 width:      .res 1
 val:        .res 2
-sv_ctrl:    .res 1
-sv_l:       .res 1
-sv_m:       .res 1
-sv_h:       .res 1
 last_flush: .res 1
 row:        .res 1
 sum:        .res 1
 printed:    .res 1
+outi:       .res 1                      ; column of the next character written
 row_sum:    .res ROWS
+buf:        .res ROWS * COLS            ; screen codes
 
     .segment "RODATA"
 
 p10_lo:     .byte <10000, <1000, <100, <10, <1
 p10_hi:     .byte >10000, >1000, >100, >10, >1
 hdr:        .byte "--- ", $48, $55, $44, " ---", $0A, 0   ; ASCII "HUD": ca65 -t cx16 strings are PETSCII
+row_lo:     .repeat ROWS, I
+            .byte <(buf + I * COLS)
+            .endrepeat
+row_hi:     .repeat ROWS, I
+            .byte >(buf + I * COLS)
+            .endrepeat
 
     .segment "CODE"
 
@@ -69,6 +72,19 @@ _hud_init:
     cmp #'6'
     bne @r
     inc emu
+    lda #<buf                           ; the buffer: spaces
+    sta ptr3
+    lda #>buf
+    sta ptr3+1
+    ldx #>(ROWS * COLS + 255)
+    lda #SC_SPACE
+    ldy #0
+@f: sta (ptr3),y
+    iny
+    bne @f
+    inc ptr3+1
+    dex
+    bne @f
     ldx #ROWS-1                         ; every row printed the first time
     lda #$A5
 @c: sta row_sum,x
@@ -80,51 +96,30 @@ _hud_init:
     sta last_flush
 @r: rts
 
-; save CTRL and the port 0 address, CTRL = 0
-vsave:
-    lda VERA_CTRL
-    sta sv_ctrl
-    lda #0
-    sta VERA_CTRL
-    lda VERA_ADDR_L
-    sta sv_l
-    lda VERA_ADDR_M
-    sta sv_m
-    lda VERA_ADDR_H
-    sta sv_h
+; ptr3 = buf + A * COLS (row A); preserves Y
+row_ptr:
+    tax
+    lda row_lo,x
+    sta ptr3
+    lda row_hi,x
+    sta ptr3+1
     rts
 
-vrest:
-    lda #0
-    sta VERA_CTRL
-    lda sv_l
-    sta VERA_ADDR_L
-    lda sv_m
-    sta VERA_ADDR_M
-    lda sv_h
-    sta VERA_ADDR_H
-    lda sv_ctrl
-    sta VERA_CTRL
-    rts
-
-; port 0 at row A, column 0 of the text screen, step 2 (the chars)
-seek_row:
-    clc
-    adc #TXT_PAGE
-    sta VERA_ADDR_M
-    lda #0
-    sta VERA_ADDR_L
-    lda #(VERA_INC2 | TXT_BANK)
-    sta VERA_ADDR_H
-    rts
-
-; pop y then x (pushed x, y): port 0 at (x, y) of the text screen
+; pop y then x (pushed x, y): ptr3 = row y, outi = x
 locate:
     jsr popa
-    jsr seek_row                        ; y
+    jsr row_ptr                         ; y
     jsr popa
-    asl a                               ; x * 2
-    sta VERA_ADDR_L
+    sta outi
+    rts
+
+; A -> buf[row][outi++]; preserves X, Y
+out:
+    sty val+1
+    ldy outi
+    sta (ptr3),y
+    inc outi
+    ldy val+1
     rts
 
 ; A = source character (PETSCII) -> screen code; preserves X, Y
@@ -147,17 +142,15 @@ _hud_puts:
     lda emu
     bne :+
     jmp incsp2
-:   jsr vsave
-    jsr locate
+:   jsr locate
     ldy #0
 @l: lda (ptr2),y
     beq @e
     jsr to_screen
-    sta VERA_DATA0
+    jsr out
     iny
     bne @l
-@e: jsr vrest
-    jmp auto_flush
+@e: jmp auto_flush
 
 _hud_u16:
     sta width
@@ -167,7 +160,6 @@ _hud_u16:
 :   jsr popax
     sta val
     stx val+1
-    jsr vsave
     jsr locate
     lda #1
     sta tmp2                            ; 1 = still in the leading zeros
@@ -199,7 +191,7 @@ _hud_u16:
     beq @show
     lda tmp2
     beq @show
-    lda #$20                            ; space
+    lda #SC_SPACE
     jmp @put
 @show:
     lda #0
@@ -207,12 +199,13 @@ _hud_u16:
     lda tmp3
     ora #SC_ZERO
 @put:
-    sta VERA_DATA0
+    ldy outi                            ; (out would clobber val+1)
+    sta (ptr3),y
+    inc outi
 @next:
     inx
     cpx #5
     bne @digit
-    jsr vrest
     jmp auto_flush
 
 _hud_bcd:
@@ -223,7 +216,6 @@ _hud_bcd:
 :   jsr popax
     sta ptr2                            ; the BCD bytes
     stx ptr2+1
-    jsr vsave
     jsr locate
     ldy #0
 @b: lda (ptr2),y
@@ -233,15 +225,14 @@ _hud_bcd:
     lsr a
     lsr a
     ora #SC_ZERO
-    sta VERA_DATA0
+    jsr out
     txa                                 ; low digit
     and #$0F
     ora #SC_ZERO
-    sta VERA_DATA0
+    jsr out
     iny
     dec width
     bne @b
-    jsr vrest
     jmp auto_flush
 
 ; hud_flush() if 60 VERA frames went by since the last one
@@ -254,7 +245,7 @@ auto_flush:
     rts
 
 ; ----------------------------------------------------------------------------
-; void hud_flush(void): the rows of the text screen that changed, to stdout
+; void hud_flush(void): the rows of the buffer that changed, to stdout
 ; ----------------------------------------------------------------------------
 _hud_flush:
     lda emu
@@ -262,22 +253,22 @@ _hud_flush:
     rts
 :   lda _vera_irq_count
     sta last_flush
-    jsr vsave
     lda #0
     sta printed
     sta row
 @row:
     lda row                             ; checksum of the row
-    jsr seek_row
+    jsr row_ptr
     lda #0
     sta sum
-    ldy #COLS
+    ldy #0
 @s: lda sum
     asl a
     adc #0                              ; rotate left
-    eor VERA_DATA0
+    eor (ptr3),y
     sta sum
-    dey
+    iny
+    cpy #COLS
     bne @s
     ldx row
     cmp row_sum,x
@@ -306,12 +297,13 @@ _hud_flush:
     lda #' '
     sta EMU_STDOUT
     lda row
-    jsr seek_row
-    ldy #COLS
-@c: lda VERA_DATA0
+    jsr row_ptr
+    ldy #0
+@c: lda (ptr3),y
     jsr to_ascii
     sta EMU_STDOUT
-    dey
+    iny
+    cpy #COLS
     bne @c
     lda #$0A
     sta EMU_STDOUT
@@ -320,7 +312,7 @@ _hud_flush:
     lda row
     cmp #ROWS
     bne @row
-    jmp vrest
+    rts
 
 ; screen code (bit 7 = reverse, ignored) -> ASCII
 to_ascii:
