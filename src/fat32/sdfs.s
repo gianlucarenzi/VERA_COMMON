@@ -9,7 +9,7 @@
 .include "seg.inc"
 .include "lib.inc"
 
-.import sdcard_init
+.import sdcard_init, sdcard_set_fast_mode
 .import fat32_init, fat32_alloc_context, fat32_set_context
 .import fat32_open, fat32_read, fat32_close
 .import fat32_open_dir, fat32_read_dirent, fat32_chdir
@@ -51,6 +51,8 @@ ret_carry:
 _sd_mount:
 	jsr sdcard_init                 ; as the X16 DOS does before fat32_init
 	bcc ret_carry
+	lda #1                          ; sector reads with SPI auto-tx (the
+	jsr sdcard_set_fast_mode        ; VERA boards: bitstream 48.0.1)
 	jsr fat32_init
 	bcc ret_carry
 	lda #0                          ; volume 0
