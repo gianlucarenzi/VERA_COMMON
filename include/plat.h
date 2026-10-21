@@ -30,6 +30,13 @@ unsigned char plat_joy(void);
  * times everything on the VERA frame (vera_irq.h). */
 extern unsigned char plat_ntsc;
 
+#if defined(__ATARI__)
+/* Atari XL/XE: the OS ROM copied into the RAM under it, ROM off (src/atari/
+ * osram.s); then its character set at $E000 can be replaced in place.
+ * 1 = done (or already RAM), 0 = no RAM under the OS. */
+unsigned char os_ram(void);
+#endif
+
 /* Key that leaves a program (cgetc() code) and the name of the host. */
 #if defined(__ATARI__)
 #define PLAT_KEY_EXIT  0x1B             /* ESC */

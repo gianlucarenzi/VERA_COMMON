@@ -52,7 +52,7 @@ AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
           src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s src/rmt/rmtpsg.s src/rmt/rmtio.s
 # rmt_out_host: the music on the host chip (Atari POKEY, C64 SID)
 ifeq ($(PLATFORM),atari)
-AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s src/atari/xexchunks.s
+AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s src/atari/xexchunks.s src/atari/osram.s
 else ifeq ($(PLATFORM),c64)
 AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
