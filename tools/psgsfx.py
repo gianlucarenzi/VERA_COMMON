@@ -13,8 +13,8 @@ pan 'LR' | 'L' | 'R'.  At most 63 frames an effect.  The helpers below
 bank.s (ca65): the bank of sfx_init: .byte count, .word effect..; each
 effect .byte frames, then 4 bytes a frame (the PSG voice registers).
 ids.h: #define SFX_<NAME> id.  --wav: a preview of every effect, rendered
-with a model of the VERA PSG (17 bit phase at 25 MHz / 512, 6 bit
-waveforms, 0.5 dB volume steps).
+with the PSG of x16emu (vera_psg.c: 17 bit phase at 25 MHz / 512, the
+shared noise LFSR, its volume table).
 """
 import argparse
 import math
@@ -69,38 +69,57 @@ def vibrato(freqs, depth, rate_hz):
 
 
 # -- PSG model (previews) -----------------------------------------------------
+# x16emu vera_psg.c (the FPGA 48.0.1 behaviour): 17 bit phase, a voice runs
+# only with pan bits set; noise from ONE 16 bit LFSR shared by the 16 voices,
+# stepped once per voice every sample, a voice takes (state >> 1) & 63 when
+# bit 16 of its phase falls (the noise is not random: a model with random
+# values sounded different from the emulator, 2026-10-21); pulse high while
+# phase >> 10 <= pw; 6 bit signed samples times volume_lut, >> 3.
+VOLUME_LUT = [0, 4, 8, 12, 16, 17, 18, 20, 21, 22, 23, 25, 26, 28, 30, 31,
+              33, 35, 37, 40, 42, 45, 47, 50, 53, 56, 60, 63, 67, 71, 75, 80,
+              85, 90, 95, 101, 107, 113, 120, 127, 135, 143, 151, 160, 170, 180, 191, 202,
+              214, 227, 241, 255, 270, 286, 303, 321, 341, 361, 382, 405, 429, 455, 482, 511]
+VOICE = 12                               # sfx.s plays from voice 12
+
+
 def render(frames, seed=1):
-    rnd = random.Random(seed)
     out = []
     phase = 0
-    noise = 0
+    noiseval = 0
+    noise = 1
     spf = PSG_RATE / FRAME_HZ
     acc = 0.0
     for f in frames + [frame(0, 0)] * 6:
         r = regs(f)
         w = r[0] | r[1] << 8
-        vol = r[2] & 63
+        vol = VOLUME_LUT[r[2] & 63]
+        on = r[2] & 0xC0
         wv = r[3] >> 6
         pw = r[3] & 63
-        amp = 0.0 if vol == 0 else 10 ** (-(63 - vol) * 0.5 / 20)
         acc += spf
         n = int(acc)
         acc -= n
         for _ in range(n):
-            old = phase
-            phase = (phase + w) & 0x1FFFF
-            p = phase >> 10                       # 7 bits
-            if wv == 0:
-                s = 63 if (p & 0x7F) < (pw << 1) + 1 else 0
-            elif wv == 1:
-                s = phase >> 11
-            elif wv == 2:
-                s = (p & 0x3F) if not (p & 0x40) else 63 - (p & 0x3F)
-            else:
-                if (phase ^ old) & 0x10000 or w > 0x8000:
-                    noise = rnd.randrange(64)
-                s = noise
-            out.append((s - 31.5) / 31.5 * amp)
+            for ch in range(16):
+                noise = ((noise << 1) | (((noise >> 1) ^ (noise >> 2) ^ (noise >> 4) ^ (noise >> 15)) & 1)) & 0xFFFF
+                if ch != VOICE:
+                    continue
+                new = (phase + w) & 0x1FFFF if on else 0
+                if (phase & 0x10000) and not (new & 0x10000):
+                    noiseval = (noise >> 1) & 0x3F
+                phase = new
+                if wv == 0:
+                    v = 0 if (phase >> 10) > pw else 0x3F
+                elif wv == 1:
+                    v = (phase >> 11) ^ ((pw ^ 0x3F) & 0x3F)
+                elif wv == 2:
+                    v = ((~(phase >> 10) & 0x3F) if phase & 0x10000 else ((phase >> 10) & 0x3F)) ^ ((pw ^ 0x3F) & 0x3F)
+                else:
+                    v = noiseval
+                sv = v ^ 0x20
+                if sv & 0x20:
+                    sv -= 64
+                out.append((sv * vol >> 3) / 2048.0)
     return out
 
 

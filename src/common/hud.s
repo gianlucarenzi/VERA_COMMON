@@ -76,15 +76,19 @@ _hud_init:
     sta ptr3
     lda #>buf
     sta ptr3+1
-    ldx #>(ROWS * COLS + 255)
-    lda #SC_SPACE
-    ldy #0
-@f: sta (ptr3),y
+    lda #SC_SPACE                       ; exactly ROWS * COLS bytes: whole
+    ldy #0                              ; pages, then the rest (whole pages
+    ldx #>(ROWS * COLS)                 ; ran 24 bytes past the buffer, into
+@f: sta (ptr3),y                        ; the next module's BSS: sfx.s)
     iny
     bne @f
     inc ptr3+1
     dex
     bne @f
+    ldy #<(ROWS * COLS)
+@g: dey
+    sta (ptr3),y
+    bne @g
     ldx #ROWS-1                         ; every row printed the first time
     lda #$A5
 @c: sta row_sum,x
