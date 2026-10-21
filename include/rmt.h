@@ -64,6 +64,25 @@ void rmt_out_hybrid(void);
 void rmt_io_begin(void);
 void rmt_io_end(void);
 
+/* The song in a RAM bank, so it takes no main RAM: link it at the bank
+ * window (RMT_BANK_WINDOW: Atari $4000, a RAMbo bank; X16 $A000, banked
+ * RAM), fill the bank with rmt_bank_copy, set rmt_bank, then rmt_init*.
+ * The player switches the bank in only while it reads the module (IRQ
+ * callback, rmt_init) and restores the window it found.  rmt_bank: Atari
+ * the PORTB bits of the bank (RMT_ATARI_BANK(n), n = 1..15: bank 0 is the
+ * FAT32 code of libvera_sd.lib), X16 the RAM_BANK (2.., bank 1 is XBSS);
+ * 0 = the song is in the main RAM (the default).  Not on the C64. */
+extern unsigned char rmt_bank;
+#define RMT_ATARI_BANK(n) ((((n) & 3) << 2) | (((n) & 12) << 3))
+#ifdef __CX16__
+#define RMT_BANK_WINDOW ((void *)0xA000)
+#else
+#define RMT_BANK_WINDOW ((void *)0x4000)
+#endif
+/* n bytes from the main RAM to dst in the window of bank rmt_bank (set it
+ * first); the music must be stopped */
+void __fastcall__ rmt_bank_copy(void *dst, const void *src, unsigned n);
+
 extern volatile unsigned int  rmt_frames;     /* song frames played */
 extern unsigned char          rmt_ispeed;     /* player calls per song frame */
 extern volatile unsigned char rmt_audc[];     /* AUDC values computed by the player */

@@ -9,6 +9,7 @@
         .export rmt_init_core
         .import RASTERMUSICTRACKER
         .import _rmt_stop, _rmt_ispeed, player_play, player_silence
+        .import song_bank_in, song_bank_out
 
 rmt_init    = RASTERMUSICTRACKER+0      ; X/Y = module, A = song line
 rmt_play    = RASTERMUSICTRACKER+3
@@ -31,12 +32,16 @@ rmt_init_core:
         sta player_silence+1
         lda #>rmt_silence
         sta player_silence+2
+        jsr song_bank_in                ; the module may be in a bank (A, X lost)
         pla                             ; X = lo, Y = hi for the player
         tay
         pla
         tax
         lda #0                          ; from song line 0
         jsr rmt_init                    ; A = instrument speed
+        pha
+        jsr song_bank_out
+        pla
         cmp #1                          ; clamp to 1..4 (RMT format range)
         bcs @lo
         lda #1
