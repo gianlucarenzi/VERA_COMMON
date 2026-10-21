@@ -63,10 +63,13 @@ void asset_close(void)
     }
 }
 
+void (*asset_progress)(unsigned n);
+
 unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 {
     int got;
     unsigned char *p = (unsigned char *)dst;
+    unsigned n0 = n;
 
     /* a read may return fewer bytes than asked even mid-file: go on until
      * n bytes are in, only a zero read is the end */
@@ -77,6 +80,8 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
         p += got;
         n -= got;
     }
+    if (asset_progress)
+        asset_progress(n0);
     return 1;
 }
 

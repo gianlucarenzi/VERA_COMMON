@@ -19,6 +19,10 @@
 
 unsigned char asset_buf[ASSET_BUF_SIZE];
 
+/* the code in LOWRODATA: on the Atari (cfg/atari-rambo.cfg) RAM below $4000,
+ * MAIN is full; on the C64 it is in MAIN like CODE */
+#pragma code-name (push, "LOWRODATA")
+
 static unsigned char mounted;
 static unsigned char is_open;
 static unsigned char streaming;
@@ -56,20 +60,28 @@ void asset_close(void)
     }
 }
 
+void (*asset_progress)(unsigned n);
+
 unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 {
     unsigned got;
     unsigned char *p = (unsigned char *)dst;
+    unsigned n0 = n;
 
-    if (streaming)
-        return !n || sd_stream_read(dst, n) == n;
-    while (n) {
-        got = sd_read(p, n);
-        if (got == 0)
+    if (streaming) {
+        if (n && sd_stream_read(dst, n) != n)
             return 0;
-        p += got;
-        n -= got;
+    } else {
+        while (n) {
+            got = sd_read(p, n);
+            if (got == 0)
+                return 0;
+            p += got;
+            n -= got;
+        }
     }
+    if (asset_progress)
+        asset_progress(n0);
     return 1;
 }
 
@@ -93,11 +105,16 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
     /* straight from the sector buffer to DATA0, no bounce buffer; an IRQ
      * callback that uses the data ports restores them (vera_irq.h) */
     while (n) {
-        chunk = n > 0x4000 ? 0x4000 : (unsigned)n;
+        /* smaller pieces while a loading bar follows them */
+        chunk = asset_progress ? 0x800 : 0x4000;
+        if (n < chunk)
+            chunk = (unsigned)n;
         got = streaming ? sd_stream_vram(chunk) : sd_read_vram(chunk);
         if (got == 0)
             return 0;
         n -= got;
+        if (asset_progress)
+            asset_progress(got);
     }
     return 1;
 }
@@ -112,3 +129,5 @@ unsigned char __fastcall__ asset_load(const char *name, void *dst, unsigned n)
     asset_close();
     return ok;
 }
+
+#pragma code-name (pop)

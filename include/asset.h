@@ -47,6 +47,12 @@ unsigned char asset_stream(void);
 /* Open, read n bytes to dst, close; 1 = ok. */
 unsigned char __fastcall__ asset_load(const char *name, void *dst, unsigned n);
 
+/* Loading progress: when set, called after every piece that asset_read /
+ * asset_vram bring in (n = its bytes; asset_skip does not count), from the
+ * caller's context, never from an IRQ.  A loading screen sets it, sums n
+ * against the total it expects and draws its bar; NULL (default) = off. */
+extern void (*asset_progress)(unsigned n);
+
 /* The bounce buffer of asset_vram / asset_skip, free between calls. */
 #define ASSET_BUF_SIZE 256u
 extern unsigned char asset_buf[ASSET_BUF_SIZE];

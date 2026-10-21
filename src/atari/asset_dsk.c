@@ -140,10 +140,13 @@ void asset_close(void)
     }
 }
 
+void (*asset_progress)(unsigned n);
+
 unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 {
     unsigned char k;
     unsigned char *p = (unsigned char *)dst;
+    unsigned n0 = n;
 
     while (n) {
         if (pos == cnt) {
@@ -159,6 +162,8 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
         p += k;
         n -= k;
     }
+    if (asset_progress)
+        asset_progress(n0);
     return 1;
 }
 
@@ -199,6 +204,8 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
         vram_write(sec + pos, k);
         pos += k;
         n -= k;
+        if (asset_progress)
+            asset_progress(k);
     }
     return 1;
 }
