@@ -18,11 +18,22 @@
 ;                                            unsigned sector, void* buf);
 ; return: 1 = OK, 138 timeout, 139 NAK, 140 serial framing/overrun,
 ;         143 checksum, 144 device error. 128 bytes sectors only (SD/ED).
+;
+; High speed SIO: the first call asks the drive for its speed, as the
+; high speed OS patches do (short timeout: a stock 1050 just NAKs):
+;   $3F  "get speed index" (US Doubler, SDrive, SIO2SD, FujiNet, SIO2PC):
+;        the POKEY divisor of the drive (>= MIN_DIV, else not used); then
+;        command frames and responses at that speed
+;   $D3  XF551 status: commands with bit 7 set, sent at 19200, the drive
+;        answers at 38400 (divisor $10); atari800 emulates only this one
+;   else the standard 19200.  A failed transfer at high speed falls back
+;   to the standard speed for good and is retried once.
+; sio_div (exported) is the divisor of the responses: $28 standard.
 ; ============================================================================
 
         .setcpu "6502"
 
-        .export _sio_read_sector
+        .export _sio_read_sector, _sio_div
         .import popa, popax
 
 
@@ -46,7 +57,16 @@ SKSTAT  = $D20F
 PBCTL   = $D303
 
 BAUD_AUDF3 = $28                ; 19200 baud (OS standard)
+XF551_DIV  = $10                ; 38400 baud
+MIN_DIV    = 6                  ; faster: bytes closer than the IRQ latency
 TIMEOUT    = 150                ; frames (3 s PAL)
+TMO_PROBE  = 10                 ; frames, the speed questions
+
+; speed modes
+M_PROBE  = 0                    ; not asked yet
+M_STD    = 1
+M_XF551  = 2
+M_US     = 3                    ; $3F: everything at sio_div
 
 ; state machine
 ST_ACK   = 0
@@ -62,8 +82,15 @@ ST_SERR  = 8
         .segment "ZEROPAGE"
 bufp:   .res 2
 
+        .segment "DATA"
+mode:   .byte M_PROBE
+_sio_div: .byte BAUD_AUDF3
+
         .segment "BSS"
 cmdframe: .res 5
+len:    .res 1                  ; data bytes of the response
+cmddiv: .res 1                  ; divisor of the command frame
+tmo:    .res 1
 state:  .res 1
 cnt:    .res 1
 chk:    .res 1
@@ -87,8 +114,82 @@ _sio_read_sector:
         clc
         adc #$30                ; $31 = D1:
         sta cmdframe
+
+        lda mode
+        bne @read
+        ; --- the speed questions, once (the answers in the sector buffer) ---
+        lda #TMO_PROBE
+        sta tmo
+        lda #1                  ; $3F: one byte, the divisor
+        sta len
+        lda #$3F
+        jsr std_cmd
+        bne @xf
+        tay                     ; A = 1
+        dey
+        lda (bufp),y
+        cmp #MIN_DIV
+        bcc @xf
+        sta _sio_div
+        lda #M_US
+        bne @setm
+@xf:    lda #4                  ; XF551 status at 38400: 4 bytes
+        sta len
+        lda #XF551_DIV
+        sta _sio_div
+        lda #$D3
+        jsr std_cmd2
+        beq @isxf
+        lda #BAUD_AUDF3
+        sta _sio_div
+        lda #M_STD
+        .byte $2C               ; skip the next lda
+@isxf:  lda #M_XF551
+@setm:  sta mode
+
+@read:  lda #TIMEOUT
+        sta tmo
+        lda #128
+        sta len
         lda #'R'
+        ldx mode
+        cpx #M_XF551
+        bne :+
+        ora #$80
+:       ldy #BAUD_AUDF3         ; the command frame: 19200
+        cpx #M_US
+        bne :+
+        ldy _sio_div            ; ... or the drive's speed
+:       jsr xfer
+        cmp #1
+        beq @ret
+        ldx mode                ; failed at high speed: the standard one
+        dex                     ; M_STD
+        beq @ret
+        lda #M_STD
+        sta mode
+        lda #BAUD_AUDF3
+        sta _sio_div
+        bne @read               ; always
+@ret:   ldx #0
+        rts
+
+; command A at 19200 with the response at 19200 (std_cmd) or at sio_div
+; (std_cmd2); Z = 1 on success
+std_cmd:
+        ldy #BAUD_AUDF3
+        sty _sio_div
+std_cmd2:
+        ldy #BAUD_AUDF3
+        jsr xfer
+        cmp #1
+        rts
+
+; one transfer: A = command, Y = divisor of the command frame, the
+; response at sio_div into bufp (len bytes); A = the status
+xfer:
         sta cmdframe+1
+        sty cmddiv
         ; command frame checksum (8 bit add with end around carry)
         lda #0
         ldx #3
@@ -103,7 +204,7 @@ _sio_read_sector:
         ; POKEY ch3+4 = 16 bit baud rate generator, silent
         lda #$28
         sta AUDCTL
-        lda #BAUD_AUDF3
+        lda cmddiv
         sta AUDF3
         lda #0
         sta AUDF4
@@ -161,6 +262,8 @@ _sio_read_sector:
         sta IRQEN
 
         ; --- response, IRQ driven ---
+        lda _sio_div            ; the speed of the response
+        sta AUDF3
         lda #0
         sta state
         sta cnt
@@ -186,7 +289,7 @@ _sio_read_sector:
         lda RTCLOK+2
         sec
         sbc t0
-        cmp #TIMEOUT
+        cmp tmo
         bcc @wait
         lda #138                ; timeout
         bne @fin
@@ -206,7 +309,6 @@ _sio_read_sector:
         sta VSERIN+1
         cli
         txa
-        ldx #0
         rts
 
 ; ---------------------------------------------------------------------------
@@ -252,7 +354,8 @@ serin_irq:
         sta chk
         iny
         sty cnt
-        bpl @out                ; < 128 bytes
+        cpy len
+        bne @out                ; not all yet
         inc state               ; -> ST_CHK
         bne @out
 
