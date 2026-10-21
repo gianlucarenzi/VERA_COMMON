@@ -23,9 +23,11 @@
 
         .export _sd_mount, _sd_open, _sd_read, _sd_read_vram, _sd_close
         .export _sd_opendir, _sd_readdir, _sd_chdir, _sd_errno, _sd_dirent
+        .export _sd_stream_start, _sd_stream_stop
         .import bk_sd_mount, bk_sd_open, bk_sd_read, bk_sd_read_vram
         .import bk_sd_close, bk_sd_opendir, bk_sd_readdir, bk_sd_chdir
         .import bk_sd_errno, bk_sd_dirent
+        .import bk_sd_stream_start, bk_sd_stream_stop
         .import popax, pushax
         .importzp ptr1, ptr2
         .import __BANKON_LOAD__, __BANKON_SIZE__
@@ -86,6 +88,8 @@ _sd_mount:      CALL bk_sd_mount
 _sd_close:      CALL bk_sd_close
 _sd_errno:      CALL bk_sd_errno
 _sd_read_vram:  CALL bk_sd_read_vram
+_sd_stream_start: CALL bk_sd_stream_start
+_sd_stream_stop:  CALL bk_sd_stream_stop
 
 ; A/X = C string -> path_buf, A/X = path_buf
 copy_path:

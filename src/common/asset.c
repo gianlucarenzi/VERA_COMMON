@@ -49,6 +49,12 @@ unsigned char __fastcall__ asset_open(const char *name)
     return fd >= 0;
 }
 
+/* disks: no streaming, asset_read as always */
+unsigned char asset_stream(void)
+{
+    return 0;
+}
+
 void asset_close(void)
 {
     if (fd >= 0) {

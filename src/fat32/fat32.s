@@ -97,6 +97,8 @@ fat32_time_seconds:  .byte 0
 bytecnt:             .word 0       ; Used by fat32_write
 fat32_stream:        .byte 0       ; (libvera) bit 7: fat32_read / fat32_write stream mode
 tmp_buf:             .res 4        ; Used by save_sector_buffer, fat32_rename
+fat32_stream_lba:    .dword 0      ; (libvera) fat32_contiguous: the file's first sector
+stream_cluster:      .dword 0      ; (libvera) fat32_contiguous: the cluster before
 next_sector_arg:     .byte 0       ; Used by next_sector to store argument
 tmp_bufptr:          .word 0       ; Used by next_sector
 tmp_sector_lba:      .dword 0      ; Used by next_sector
@@ -152,6 +154,7 @@ _fat32_bss_end:
 
 .export fat32_alloc_context
 .export fat32_chdir
+.export fat32_contiguous, fat32_stream_lba   ; (libvera)
 .export fat32_close
 .export fat32_create
 .export fat32_delete
@@ -3194,6 +3197,39 @@ x16_stream_copy:
 	dex
 	bne @loop
 	jmp fat32_read_cont2
+
+
+;-----------------------------------------------------------------------------
+; fat32_contiguous (libvera)
+;
+; The file just opened (file_offset 0): are its clusters one after the
+; other on the card?  Then it can be read as one run of sectors from
+; fat32_stream_lba (sdcard_stream_start, src/fat32/sdstream.s).  The chain
+; is followed through the FAT; afterwards the context is back at the first
+; sector, so fat32_read works as before either way.
+;
+; * c=1: contiguous, fat32_stream_lba = its first sector
+;-----------------------------------------------------------------------------
+fat32_contiguous:
+	set32 fat32_stream_lba, cur_context + context::lba
+@next:	set32 stream_cluster, cur_context + context::cluster
+	jsr next_cluster
+	bcc @no
+	jsr is_end_of_cluster_chain
+	bcs @yes
+	inc32 stream_cluster
+	cmp32_ne stream_cluster, cur_context + context::cluster, @no
+	jmp @next
+
+@yes:	jsr @back
+	sec
+	rts
+@no:	jsr @back
+	clc
+	rts
+
+@back:	set32 cur_context + context::cluster, cur_context + context::start_cluster
+	jmp open_cluster
 
 
 ;-----------------------------------------------------------------------------

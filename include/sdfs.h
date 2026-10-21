@@ -58,6 +58,17 @@ unsigned __fastcall__ sd_read_vram(unsigned n);
 
 void sd_close(void);
 
+/* The open file as one stream (src/fat32/sdstream.s): sd_stream_start right
+ * after sd_open (1 = the file is contiguous and the card streams it, 0 =
+ * not: sd_read works as before), sd_stream_reset, then only
+ * sd_stream_read / sd_stream_vram (n bytes, or 0 on a card error) until
+ * sd_stream_stop, before sd_close.  The card stays busy with the file. */
+unsigned char sd_stream_start(void);
+void sd_stream_reset(void);
+unsigned __fastcall__ sd_stream_read(void *dst, unsigned n);
+unsigned __fastcall__ sd_stream_vram(unsigned n);
+void sd_stream_stop(void);
+
 /* Open a directory ("" = the current one) and read its entries into
  * sd_dirent; sd_readdir() returns 0 after the last one. Close it with
  * sd_close() before opening anything else (one context only). */

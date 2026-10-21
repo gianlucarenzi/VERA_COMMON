@@ -37,6 +37,13 @@ unsigned char __fastcall__ asset_vram(unsigned long n);
 
 void asset_close(void);
 
+/* Right after asset_open: read the file as one stream from now on, if the
+ * host can (SD: the file contiguous on the card, src/fat32/sdstream.s:
+ * ~3x faster reads, no work per sector).  1 = streaming, 0 = reads as
+ * before (disks, X16, a fragmented file).  While a file streams nothing
+ * else may be opened: asset_close ends it. */
+unsigned char asset_stream(void);
+
 /* Open, read n bytes to dst, close; 1 = ok. */
 unsigned char __fastcall__ asset_load(const char *name, void *dst, unsigned n);
 

@@ -8,6 +8,7 @@
 	.include "sdcard.inc"
 
 	.export sector_buffer, sector_buffer_end, sector_lba, sdcard_set_fast_mode
+	.export sdcard_stream_start, sdcard_stream_stop     ; (libvera)
 
 	FAT32_BSS
 cmd_idx = sdcard_param
@@ -427,6 +428,68 @@ sdcard_read_sector:
 	jsr deselect
 	sec
 	rts
+
+;-----------------------------------------------------------------------------
+; sdcard_stream_start (libvera)
+; READ_MULTIPLE_BLOCK (CMD18) from sector_lba: the card then sends block
+; after block (token $FE, 512 bytes, 2 CRC bytes, a few $FF in between) for
+; as long as it is clocked, until sdcard_stream_stop.  CMD18 is a command of
+; the card, the VERA only shifts the bytes; its auto-tx (bitstream 48.0.1,
+; as the fast sector reads) stays on: every read of SPI_DATA starts the
+; next byte, so the caller (src/fat32/sdstream.s) only reads SPI_DATA.
+; Nothing else may use the card until sdcard_stream_stop.
+; result: C=0 -> error, C=1 -> success
+;-----------------------------------------------------------------------------
+sdcard_stream_start:
+	lda #($40 | 18)
+	sta cmd_idx
+	lda #1
+	sta cmd_crc
+	jsr send_cmd
+	bcc @error
+	cmp #0                          ; R1: no error bits
+	bne @error
+
+	lda SPI_CTRL
+	ora #SPI_CTRL_AUTOTX
+	sta SPI_CTRL
+	lda SPI_DATA                    ; auto-tx: the first byte of the stream
+	lda #$FF                        ; sector_buffer is no longer the
+	sta sector_lba + 3              ; sector the card is at
+	sec
+	rts
+
+@error:	jsr deselect
+	clc
+	rts
+
+;-----------------------------------------------------------------------------
+; sdcard_stream_stop (libvera)
+; auto-tx off, STOP_TRANSMISSION (CMD12): the card answers after a stuff
+; byte with R1, then holds the line low (busy) until it is ready
+;-----------------------------------------------------------------------------
+sdcard_stream_stop:
+	lda SPI_CTRL
+	and #(SPI_CTRL_AUTOTX ^ $FF)
+	sta SPI_CTRL
+	lda #($40 | 12)
+	jsr spi_write
+	lda #0
+	jsr spi_write
+	jsr spi_write
+	jsr spi_write
+	jsr spi_write
+	lda #$61                        ; CRC of CMD12 + stop bit
+	jsr spi_write
+	jsr spi_read                    ; stuff byte
+	ldy #10
+@r1:	jsr spi_read
+	cmp #$80                        ; R1: bit 7 clear
+	bcc @busy
+	dey
+	bne @r1
+@busy:	jsr wait_ready
+	jmp deselect
 
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector

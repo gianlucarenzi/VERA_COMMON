@@ -21,6 +21,7 @@ unsigned char asset_buf[ASSET_BUF_SIZE];
 
 static unsigned char mounted;
 static unsigned char is_open;
+static unsigned char streaming;
 
 unsigned char __fastcall__ asset_open(const char *name)
 {
@@ -34,8 +35,21 @@ unsigned char __fastcall__ asset_open(const char *name)
     return is_open;
 }
 
+unsigned char asset_stream(void)
+{
+    if (is_open && !streaming && sd_stream_start()) {
+        sd_stream_reset();
+        streaming = 1;
+    }
+    return streaming;
+}
+
 void asset_close(void)
 {
+    if (streaming) {
+        sd_stream_stop();
+        streaming = 0;
+    }
     if (is_open) {
         sd_close();
         is_open = 0;
@@ -47,6 +61,8 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
     unsigned got;
     unsigned char *p = (unsigned char *)dst;
 
+    if (streaming)
+        return !n || sd_stream_read(dst, n) == n;
     while (n) {
         got = sd_read(p, n);
         if (got == 0)
@@ -78,7 +94,7 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
      * callback that uses the data ports restores them (vera_irq.h) */
     while (n) {
         chunk = n > 0x4000 ? 0x4000 : (unsigned)n;
-        got = sd_read_vram(chunk);
+        got = streaming ? sd_stream_vram(chunk) : sd_read_vram(chunk);
         if (got == 0)
             return 0;
         n -= got;

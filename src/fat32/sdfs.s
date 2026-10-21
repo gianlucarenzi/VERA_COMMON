@@ -14,6 +14,8 @@
 .import fat32_open, fat32_read, fat32_close
 .import fat32_open_dir, fat32_read_dirent, fat32_chdir
 .import fat32_dirent, fat32_size, fat32_errno
+.import fat32_contiguous, fat32_stream_lba, sector_lba
+.import sdcard_stream_start, sdcard_stream_stop
 .import popax
 
 .ifdef FAT32_BANKED
@@ -23,10 +25,12 @@
 .export bk_sd_read_vram := _sd_read_vram, bk_sd_close := _sd_close
 .export bk_sd_opendir := _sd_opendir, bk_sd_readdir := _sd_readdir
 .export bk_sd_chdir := _sd_chdir, bk_sd_errno := _sd_errno
+.export bk_sd_stream_start := _sd_stream_start, bk_sd_stream_stop := _sd_stream_stop
 .export bk_sd_dirent := fat32_dirent
 .else
 .export _sd_mount, _sd_open, _sd_read, _sd_read_vram, _sd_close
 .export _sd_opendir, _sd_readdir, _sd_chdir, _sd_errno
+.export _sd_stream_start, _sd_stream_stop
 .export _sd_dirent := fat32_dirent
 .endif
 
@@ -139,6 +143,25 @@ read:
 ;-----------------------------------------------------------------------------
 _sd_close:
 	jmp fat32_close
+
+;-----------------------------------------------------------------------------
+; unsigned char sd_stream_start(void)
+; void sd_stream_stop(void)
+; (the reads in between: src/fat32/sdstream.s)
+;-----------------------------------------------------------------------------
+_sd_stream_start:
+	jsr fat32_contiguous            ; one run of sectors?
+	bcc @no
+	ldx #3
+@lba:	lda fat32_stream_lba,x
+	sta sector_lba,x
+	dex
+	bpl @lba
+	jsr sdcard_stream_start
+@no:	jmp ret_carry
+
+_sd_stream_stop:
+	jmp sdcard_stream_stop
 
 ;-----------------------------------------------------------------------------
 ; unsigned char __fastcall__ sd_opendir(const char *path)

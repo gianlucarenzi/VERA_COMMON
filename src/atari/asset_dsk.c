@@ -126,6 +126,12 @@ fail:
     return 0;
 }
 
+/* disks: no streaming, asset_read as always */
+unsigned char asset_stream(void)
+{
+    return 0;
+}
+
 void asset_close(void)
 {
     if (is_open) {
