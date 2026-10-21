@@ -24,6 +24,7 @@
 
 .import popax
 .export _sd_stream_reset, _sd_stream_read, _sd_stream_vram
+.export sd_stream_vram_a, sd_stream_mem_a, sd_stream_byte, sd_dst
 
 SPI_DATA    = VERA_SPI_DATA
 VERA_DATA0  = VERA_BASE + $03
@@ -42,6 +43,9 @@ dsth:   .res 1
 cl:     .res 1                          ; this chunk: 1-256 (min of n, blk, 256)
 ch:     .res 1
 ytmp:   .res 1
+pn:     .res 1                          ; sd_stream_*_a: bytes still to move
+pm:     .res 1                          ; ... in this block
+sd_dst: .res 2                          ; sd_stream_mem_a: destination, advanced
 
 .segment "LOWRODATA"
 
@@ -193,3 +197,101 @@ next_block:
         sta skip
         sec
         rts
+
+;-----------------------------------------------------------------------------
+; The same stream for assembly callers that parse it piece by piece (the
+; level stream of the Rastan proto: tiles, map columns, collision bytes),
+; with no C call and no copy through a buffer:
+;   sd_stream_vram_a  A = n (1-255) bytes -> VERA_DATA0 (address set by
+;                     the caller); unrolled by 8: ~9 cycles a byte
+;   sd_stream_mem_a   A = n (1-255) bytes -> sd_dst, sd_dst += n
+;   sd_stream_byte    the next byte -> A
+; C = 1 ok, C = 0 card error (no data token).  X, Y lost.
+;-----------------------------------------------------------------------------
+sd_stream_vram_a:
+        sta pn
+        lda #1
+        bne piece                       ; always
+sd_stream_mem_a:
+        sta pn
+        lda #0
+piece:  sta mode
+@lp:    lda blkl
+        ora blkh
+        bne @have
+        jsr next_block
+        bcs @have
+        rts                             ; C = 0
+@have:  lda pn                          ; m = min(n, blk)
+        ldx blkh
+        bne :+
+        cmp blkl
+        bcc :+
+        lda blkl
+:       sta pm
+        lda blkl                        ; blk -= m, n -= m
+        sec
+        sbc pm
+        sta blkl
+        bcs :+
+        dec blkh
+:       lda pn
+        sec
+        sbc pm
+        sta pn
+        ldx pm
+        lda mode
+        beq @mem
+
+@v8:    cpx #8
+        bcc @v1
+        .repeat 8
+        lda SPI_DATA                    ; 4
+        sta VERA_DATA0                  ; 4
+        .endrepeat
+        txa                             ; C = 1 (cpx)
+        sbc #8
+        tax
+        bne @v8
+        beq @next                       ; always
+@v1:    lda SPI_DATA
+        sta VERA_DATA0
+        dex
+        bne @v1
+@next:  lda pn
+        beq :+
+        jmp @lp
+:       sec
+        rts
+
+@mem:   lda sd_dst
+        sta @sta + 1
+        lda sd_dst + 1
+        sta @sta + 2
+        ldy #0
+@m:     lda SPI_DATA
+@sta:   sta $FFFF,y
+        iny
+        dex
+        bne @m
+        tya                             ; sd_dst += m
+        clc
+        adc sd_dst
+        sta sd_dst
+        bcc @next
+        inc sd_dst + 1
+        bcs @next                       ; always
+
+sd_stream_byte:
+        lda blkl
+        ora blkh
+        bne :+
+        jsr next_block
+        bcc @err
+:       lda blkl                        ; blk--
+        bne :+
+        dec blkh
+:       dec blkl
+        lda SPI_DATA
+        sec
+@err:   rts
