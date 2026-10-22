@@ -48,7 +48,7 @@ ASFLAGS4 = -D RMT_TRACKS=$(RMT_TRACKS) -D RMT_TUNED
 C_SRC   = src/common/asset.c src/common/vera_detect.c src/common/vtext.c \
           src/common/vbm.c src/common/vtm_loader.c src/common/pcm_load.c
 AS_SRC  = src/common/vera_irq.s src/common/vmem.s src/common/vtm_player.s \
-          src/common/vtfont.s src/common/hud.s src/common/sfx.s src/common/pcm.s src/$(PLATFORM)/plat_$(PLATFORM).s \
+          src/common/vtfont.s src/common/hud.s src/common/bcd.s src/common/sfx.s src/common/pcm.s src/$(PLATFORM)/plat_$(PLATFORM).s \
           src/rmt/rmtplayr.s src/rmt/psgrmt.s src/rmt/rmtdrv.s src/rmt/rmtrmt.s src/rmt/rmtpsg.s src/rmt/rmtio.s
 # rmt_out_host: the music on the host chip (Atari POKEY, C64 SID)
 ifeq ($(PLATFORM),atari)
