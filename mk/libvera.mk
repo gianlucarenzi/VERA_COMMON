@@ -36,7 +36,9 @@ LIBVERA_DSK_LIB = $(LIBVERA_DIR)/libvera_dsk.lib # link before the lib: asset.h 
 LIBVERA_RMT8_LIB = $(LIBVERA_DIR)/libvera_rmt8.lib # link before the lib: RMT8 (stereo) songs, Atari rmt_init_hybrid
 # Atari: LIBVERA_RAMBO = 1 (needed with LIBVERA_SD_LIB) -> cfg/atari-rambo.cfg,
 # the FAT32 code in a RAMbo bank (src/atari/sdbank.s)
-LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo)).cfg
+# Apple II: LIBVERA_HGR = 1 -> cfg/apple2-hgr.cfg, the HGR page 1 kept free
+# (the program in two pieces around $2000-$3FFF, for a loader of its own)
+LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo))$(if $(filter apple2,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_HGR)),-hgr)).cfg
 
 LIBVERA_CFLAGS  = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_C)
 LIBVERA_ASFLAGS = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_ASM)
