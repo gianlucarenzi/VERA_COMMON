@@ -6,7 +6,9 @@
  *   C64    $DF00 (IO2, the GeoRAM of the card at $DE00), or $DE00 with
  *          -DVERA_BASE=0xDE00u (IO1, no GeoRAM)
  *   X16    $9F20
- * cc65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
+ *   Apple II  $C400: the A2VERA card in slot 4; -DVERA_BASE=0xCn00u for slot n
+ * cc65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
+ * __CX16__ / __APPLE2__.
  */
 
 #ifndef VERA_H
@@ -19,8 +21,10 @@
 #define VERA_BASE 0xDF00u
 #elif defined(__CX16__)
 #define VERA_BASE 0x9F20u
+#elif defined(__APPLE2__)
+#define VERA_BASE 0xC400u
 #else
-#error "libvera: unsupported target (cl65 -t atari, -t c64 or -t cx16)"
+#error "libvera: unsupported target (cl65 -t atari, -t c64, -t cx16 or -t apple2)"
 #endif
 #endif
 

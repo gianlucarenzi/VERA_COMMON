@@ -179,6 +179,7 @@ _vera_irq_install:
     bne @done
     php
     sei
+    IRQ_HOST_INSTALL
     lda IRQ_VECTOR
     sta old_vector
     lda IRQ_VECTOR+1

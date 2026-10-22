@@ -2,6 +2,8 @@
 build/
 vera-atari.atr
 vera-c64.d64
+vera-apple2.dsk
+vera-apple2-sd.img
 # SD card images made by tests/gen_test_image.py
 tests/*.img
 

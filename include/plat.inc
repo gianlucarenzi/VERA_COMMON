@@ -18,6 +18,15 @@
 ;   X16    the ROM pushes A, X, Y and jumps through CINV ($0314); the KERNAL
 ;          handler there takes every IRQ for the VERA VBLANK (keyboard,
 ;          joystick, clock) and acknowledges it
+;   Apple  the Monitor ROM's IRQ code saves A in $45 and jumps through
+;          $03FE with only P and PC on the stack; with the language card RAM
+;          in (cc65 programs), the 6502 vector $FFFE is RAM: IRQ_HOST_INSTALL
+;          points it at plat_apple2.s's entry, which does the same as the
+;          ROM (the ROM stays out), so both ways reach $03FE alike.
+;          IRQ_ENTER pushes A (from $45), X, Y itself
+;
+; IRQ_HOST_INSTALL: in vera_irq_install, IRQs off, before IRQ_VECTOR is
+; taken (Apple: the language card vector; nothing elsewhere).
 ;
 ; IRQ_OURS_END: the end of an IRQ the hook served (pending = its sources).
 ; On the X16 a VSYNC goes on to the KERNAL too, or keyboard and joystick
@@ -97,8 +106,50 @@ IRQ_VECTOR              = $0314                     ; CINV
 ret:    IRQ_RETURN
 .endmacro
 
+.elseif .defined(__APPLE2__)
+
+IRQ_VECTOR              = $03FE                     ; the Monitor's user IRQ vector
+IRQ_A_SAVE              = $45                       ; A, saved by the IRQ entry
+
+.macro  IRQ_ENTER
+        lda IRQ_A_SAVE
+        pha
+        txa
+        pha
+        tya
+        pha
+.endmacro
+
+.macro  IRQ_CHAIN old
+        pla
+        tay
+        pla
+        tax
+        pla                                         ; ($45 still holds it)
+        jmp old
+.endmacro
+
+.macro  IRQ_RETURN
+        pla
+        tay
+        pla
+        tax
+        pla
+        rti
+.endmacro
+
+.macro  IRQ_HOST_INSTALL
+        .import plat_irq_lc
+        jsr plat_irq_lc
+.endmacro
+
 .else
-.error "libvera: unsupported target (ca65 -t atari, -t c64 or -t cx16)"
+.error "libvera: unsupported target (ca65 -t atari, -t c64, -t cx16 or -t apple2)"
+.endif
+
+.ifndef __APPLE2__
+.macro  IRQ_HOST_INSTALL
+.endmacro
 .endif
 
 .ifndef __CX16__

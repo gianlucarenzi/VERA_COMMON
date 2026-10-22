@@ -9,13 +9,17 @@
 ;          uses $DE00-$DEFF and $DF80-$DFFF), or $DE00 (IO1, no GeoRAM)
 ;          with -D VERA_BASE=$DE00
 ;   X16    $9F20
-; ca65 -t atari / -t c64 / -t cx16 defines __ATARI__ / __C64__ / __CX16__.
+;   Apple II  $C400 (A2VERA in slot 4), -D VERA_BASE=$Cn00 for slot n
+; ca65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
+; __CX16__ / __APPLE2__.
 
 .ifndef VERA_BASE
 .ifdef __ATARI__
 VERA_BASE               = $D100                     ; PBI (atari800: -verax16)
 .elseif .defined(__CX16__)
 VERA_BASE               = $9F20                     ; on the board
+.elseif .defined(__APPLE2__)
+VERA_BASE               = $C400                     ; A2VERA, slot 4 (a2emu A2_VERA_SLOT)
 .else
 VERA_BASE               = $DF00                     ; IO2 (VICE: -vera, base 0xdf00)
 .endif

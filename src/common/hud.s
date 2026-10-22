@@ -1,7 +1,8 @@
 ; ============================================================================
 ; hud.s - fast text on the host screen, the second monitor (C interface:
 ; hud.h).  Straight into the screen RAM of the host's text screen (ANTIC
-; GRAPHICS 0 at SAVMSC on the Atari, the VIC-II screen at HIBASE on the C64),
+; GRAPHICS 0 at SAVMSC on the Atari, the VIC-II screen at HIBASE on the C64,
+; the text page 1 at $0400 on the Apple IIe),
 ; 40 columns, no cursor.  hud_u16 costs ~860 cycles for 2 digits and ~2000
 ; for 5 (cc65 C: ~4000); hud_bcd ~30 cycles a byte: keep scores in BCD.
 ; ============================================================================
@@ -350,6 +351,10 @@ to_ascii:
 SAVMSC      = $58
 SC_SPACE    = $00                       ; ANTIC internal codes
 SC_ZERO     = $10
+.elseif .defined(__APPLE2__)
+TEXT_PAGE1  = $0400                     ; 24 rows of 40, interleaved
+SC_SPACE    = $A0                       ; normal characters: ASCII + $80
+SC_ZERO     = $B0
 .else
 HIBASE      = $0288
 SC_SPACE    = $20                       ; VIC-II screen codes
@@ -364,6 +369,18 @@ val:        .res 2
 
     .segment "RODATA"
 
+.ifdef __APPLE2__
+; row r at (r & 7) * $80 + (r >> 3) * $28; a 25th row would be in the screen
+; holes the slot cards use: it is row 23 again
+row_lo:
+    .repeat 25, I
+    .byte <((((I < 24) * I + (I >= 24) * 23) & 7) * $80 + (((I < 24) * I + (I >= 24) * 23) >> 3) * $28)
+    .endrepeat
+row_hi:
+    .repeat 25, I
+    .byte >((((I < 24) * I + (I >= 24) * 23) & 7) * $80 + (((I < 24) * I + (I >= 24) * 23) >> 3) * $28)
+    .endrepeat
+.else
 row_lo:
     .repeat 25, I
     .byte <(I * 40)
@@ -372,6 +389,7 @@ row_hi:
     .repeat 25, I
     .byte >(I * 40)
     .endrepeat
+.endif
 p10_lo:     .byte <10000, <1000, <100, <10, <1
 p10_hi:     .byte >10000, >1000, >100, >10, >1
 
@@ -393,6 +411,10 @@ _hud_init:
     lda SAVMSC
     sta screen
     lda SAVMSC+1
+.elseif .defined(__APPLE2__)
+    lda #<TEXT_PAGE1
+    sta screen
+    lda #>TEXT_PAGE1
 .else
     lda #0
     sta screen
@@ -425,7 +447,10 @@ locate:
 
 ; A = source character -> screen code; preserves X, Y
 to_screen:
-.ifdef __ATARI__
+.ifdef __APPLE2__
+    ora #$80                            ; ASCII -> normal (IIe: lower case too)
+    rts
+.elseif .defined(__ATARI__)
     cmp #$20                            ; ATASCII -> internal
     bcs @hi
     adc #$40                            ; C = 0

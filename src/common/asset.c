@@ -41,6 +41,10 @@ unsigned char __fastcall__ asset_open(const char *name)
         path[2 + i] = (c >= 'a' && c <= 'z') ? (char)(c - 0x20) : c;
     path[2 + i] = 0;
     fd = open(path, O_RDONLY);
+#elif defined(__APPLE2__)
+    /* no DOS under the a2fs boot sector: open() needs ProDOS (the game
+       reads the microSD, libvera_sd.lib) */
+    fd = open(name, O_RDONLY);
 #else
     /* the build writes the files as PRG (c1541 -write) */
     _filetype = 'p';

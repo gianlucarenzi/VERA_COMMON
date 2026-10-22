@@ -40,6 +40,10 @@ unsigned int vera_require(void)
               "atari800 -verax16 -verax16-rom ...\r\n");
 #elif defined(__CX16__)
         cputs("vera not found at $9f20.\r\n");
+#elif defined(__APPLE2__)
+        cputs("VERA card not found in slot ");
+        cputc('0' + ((VERA_BASE >> 8) & 7));
+        cputs(".\r\nA2_VERA_SLOT=n a2emu ...\r\n");
 #else
         cputs("vera card not found (io1/io2).\r\n"
               "x64sc -vera\r\n");

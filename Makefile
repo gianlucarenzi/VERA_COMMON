@@ -1,11 +1,13 @@
 # Makefile - libvera: the VERA library shared by the Atari XL/XE (PBI), the
-# C64 (expansion port) and the Commander X16, and its test program.
+# C64 (expansion port), the Commander X16 and the Apple IIe (A2VERA card in
+# slot 4), and its test program.
 #
 #   make                      every host: build/<host>/libvera.lib, the test,
-#                             the disk images (vera-atari.atr, vera-c64.d64;
+#                             the disk images (vera-atari.atr, vera-c64.d64,
+#                             vera-apple2.dsk + its microSD vera-apple2-sd.img;
 #                             X16: the directory build/cx16/disk)
 #   make PLATFORM=atari one   one host only
-#   make run-atari | run-c64 | run-x16   start the emulator on the test
+#   make run-atari | run-c64 | run-x16 | run-apple2   start the emulator on the test
 #   make clean
 #
 # VICE: virtual drive 8 (+drive8truedrive -trapdevice8): the KERNAL file
@@ -13,7 +15,8 @@
 # The host window is small: it is the second monitor; the VERA window is
 # the game screen.
 #
-# Tools: cc65 (cl65, ca65, ar65), python3, dir2atr (Atari), c1541 (C64).
+# Tools: cc65 (cl65, ca65, ar65), python3, dir2atr (Atari), c1541 (C64),
+# a2fs (Apple: a2emu-vera's make install), mkfs.fat + mtools (microSD images).
 
 VERA_COMMON := $(abspath .)
 include mk/libvera.mk
@@ -28,6 +31,11 @@ C1541    ?= c1541
 ATARI800 ?= atari800
 VICE     ?= x64sc
 X16EMU   ?= x16emu
+A2EMU    ?= a2emu
+A2FS     ?= a2fs
+# a2emu: unenhanced IIe (6502), the A2VERA card's slot from VERA_BASE ($Cn00)
+A2_MODEL ?= iie
+A2_SLOT   = $(shell printf %d $$(( ($(or $(VERA_BASE),0xC400) >> 8) & 7 )))
 # x16emu CPU clock: 4 MHz, at 8 x16emu is below real time on our PCs
 X16_MHZ  ?= 4
 # Projects dir: ~/Progetti, or ~/Progetti-CVS when ~/Progetti is a symlink
@@ -83,6 +91,9 @@ FAT32_BANK = -D FAT32_BANKED=1
 else ifeq ($(PLATFORM),c64)
 FAT32_VERA_BASE = $(VERA_BASE)
 FAT32_PETSCII = -D PETSCII=1
+else ifeq ($(PLATFORM),apple2)
+FAT32_VERA_BASE = $(VERA_BASE)
+FAT32_PETSCII =
 else
 FAT32_VERA_BASE = 0x9F20
 FAT32_PETSCII = -D PETSCII=1
@@ -101,12 +112,13 @@ $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
-.PHONY: all one lib test disk run-atari run-c64 run-x16 clean prof-pcm prof-sfx
+.PHONY: all one lib test disk run-atari run-c64 run-x16 run-apple2 clean prof-pcm prof-sfx
 
 all:
 	$(MAKE) PLATFORM=atari one
 	$(MAKE) PLATFORM=c64 one
 	$(MAKE) PLATFORM=cx16 one
+	$(MAKE) PLATFORM=apple2 one
 
 one: lib test disk
 
@@ -185,9 +197,12 @@ $(B)/test_lib.o: tests/test_lib.c $(HEADERS)
 	$(CC65) $(CFLAGS) -o $(B)/test_lib.s $<
 	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_lib.s
 
-$(TEST_EXE): $(B)/test_lib.o $(B)/song.o $(LIBVERA_LIB) $(LIBVERA_CFG)
+# Apple II: no DOS, the data from the microSD
+TEST_ASSET_LIB = $(if $(filter apple2,$(PLATFORM)),$(LIBVERA_SD_LIB))
+
+$(TEST_EXE): $(B)/test_lib.o $(B)/song.o $(TEST_ASSET_LIB) $(LIBVERA_LIB) $(LIBVERA_CFG)
 	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/testlib.map -o $@ \
-	    $(B)/test_lib.o $(B)/song.o $(LIBVERA_LIB)
+	    $(B)/test_lib.o $(B)/song.o $(TEST_ASSET_LIB) $(LIBVERA_LIB)
 
 # --- disk images: the same data files on both -------------------------------
 
@@ -208,6 +223,15 @@ $(DISK): $(TEST_EXE) $(TEST_DATA)
 	rm -rf $(B)/disk && mkdir -p $(B)/disk
 	cp $(TEST_EXE) $@
 	cp $(TEST_DATA) $(B)/disk/
+else ifeq ($(PLATFORM),apple2)
+# a Disk II floppy that boots the program (a2fs: the a2emu-vera SDK boot
+# sector, no DOS), the data on the microSD
+DISK = vera-apple2.dsk
+TEST_SD = vera-apple2-sd.img
+$(DISK): $(TEST_EXE) $(TEST_SD)
+	$(A2FS) mkimage $@ $(TEST_EXE) --himem 0xBF00
+$(TEST_SD): $(TEST_DATA) tools/mksdimg.py
+	$(PYTHON) tools/mksdimg.py $@ $(TEST_DATA)
 else
 DISK = vera-c64.d64
 $(DISK): $(TEST_EXE) $(TEST_DATA)
@@ -231,6 +255,11 @@ run-c64:
 run-x16:
 	$(MAKE) PLATFORM=cx16 one
 	$(X16EMU) -mhz $(X16_MHZ) -scale 2 -fsroot build/cx16/disk -prg build/cx16/disk/TESTLIB.PRG -run
+
+run-apple2:
+	$(MAKE) PLATFORM=apple2 one
+	A2_MODEL=$(A2_MODEL) A2_VERA_SLOT=$(A2_SLOT) A2_SDCARD=$(abspath vera-apple2-sd.img) \
+	    $(A2EMU) $(abspath vera-apple2.dsk)
 
 # --- FAT32 SD test -----------------------------------------------------------
 
@@ -286,7 +315,7 @@ run-test-rastan-sd: $(B)/test_rastan_sd.$(EXE) $(SD_IMG)
 	    -windowed -win-width 384 -win-height 240 build/atari/test_rastan_sd.xex
 
 clean:
-	rm -rf build vera-atari.atr vera-c64.d64 tests/test_fat32.img
+	rm -rf build vera-atari.atr vera-c64.d64 vera-apple2.dsk vera-apple2-sd.img tests/test_fat32.img
 
 # --- CPU cycles of the sound callbacks on sim65 ------------------------------
 
