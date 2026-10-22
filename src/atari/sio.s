@@ -232,21 +232,22 @@ xfer:
         lda POKMSK
         and #$C7
         sta IRQEN               ; no serial IRQ pending
-        lda cmdframe            ; first byte straight in (as the OS does):
-        sta SEROUT              ; "output needed" fires once it is moved
-        ldx #1                  ; into the shift register
-@tx:    lda POKMSK
-        and #$C7
-        ora #$10                ; serial output needed
-        sta IRQEN
+        ora #$10                ; serial output needed: on BEFORE the byte goes
+        sta IRQEN               ; in, POKEY latches it only while enabled (an NMI
+        lda cmdframe            ; between SEROUT and IRQEN, the loader's VBI
+        sta SEROUT              ; music, lost it: endless wait)
+        ldx #1
+@tx:
 @w1:    lda IRQST
         and #$10
         bne @w1
-        lda cmdframe,x
-        sta SEROUT
         lda POKMSK
         and #$C7
         sta IRQEN               ; acknowledge
+        ora #$10
+        sta IRQEN               ; on again before the next byte
+        lda cmdframe,x
+        sta SEROUT
         inx
         cpx #5
         bne @tx
