@@ -20,6 +20,9 @@
     .include "atari.inc"
 
     .export _plat_joy, _plat_ntsc, _plat_vera_select
+    ; imported by cfg/atari*.cfg: this module (the card selection) is in
+    ; every program, also one that calls none of its functions
+    .export __VERA_SELECT__: absolute = 1
 
     .constructor plat_startup
     .destructor plat_exit

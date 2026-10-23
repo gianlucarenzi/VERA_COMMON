@@ -10,6 +10,9 @@
     .setcpu "6502"
 
     .export _plat_joy, _plat_ntsc
+    ; imported by cfg/c64.cfg: this module (the VERA select latch, the zero
+    ; page save) is in every program, also one that calls none of its functions
+    .export __VERA_SELECT__: absolute = 1
 
     .constructor plat_startup, 30       ; before the others: nothing in ZP yet
     .destructor plat_exit, 1            ; after the others
