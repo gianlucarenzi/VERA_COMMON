@@ -5,11 +5,14 @@
 ; Only the base of the 32 registers depends on the host:
 ;   Atari  $D100 (PBI device space; the registers answer whether or not the
 ;          $D1FF latch selects the card: the latch only maps its ROM)
-;   C64    $DF00 (IO2, registers $DF00-$DF1F only: the GeoRAM of the card
-;          uses $DE00-$DEFF and $DF80-$DFFF), or $DE00 (IO1, no GeoRAM)
-;          with -D VERA_BASE=$DE00
+;   C64    $DF00 (IO2, registers $DF00-$DF1F; the RBL-C64 card also has its
+;          select latch at $DFFD and the GeoRAM window $DE00-$DEFF with the
+;          page / block registers at $DFFE / $DFFF, no mirrors), or $DE00
+;          (IO1, no GeoRAM) with -D VERA_BASE=$DE00
 ;   X16    $9F20
 ;   Apple II  $C400 (A2VERA in slot 4), -D VERA_BASE=$Cn00 for slot n
+;          (1, 2, 4, 5, 7: slot 6 is the Disk II, $C3xx belongs to the IIe
+;          80-column firmware unless SLOTC3ROM is on)
 ; ca65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
 ; __CX16__ / __APPLE2__.
 
