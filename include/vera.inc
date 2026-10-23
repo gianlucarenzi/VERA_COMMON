@@ -4,7 +4,8 @@
 ;
 ; Only the base of the 32 registers depends on the host:
 ;   Atari  $D100 (PBI device space; the registers answer only while the
-;          $D1FF latch selects the card, Atari PBI rule)
+;          $D1FF latch selects the card, Atari PBI rule: plat_atari.s
+;          selects it for the whole run)
 ;   C64    $DF00 (IO2, registers $DF00-$DF1F, answering only while the VERA
 ;          is selected by a non-zero write to the latch $DFFD; the GeoRAM of
 ;          the RBL-C64 card is always active: window $DE00-$DEFF, page /

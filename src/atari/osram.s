@@ -15,6 +15,10 @@
 ; One byte at a time: ROM on to read, ROM off to write (a write with the ROM
 ; on does not reach the RAM); NMIs and IRQs off meanwhile (their vectors
 ; and handlers are in the area being switched).  ~0.4 s.
+; The VERA card is deselected during the copy, so the Math Pack (not the
+; card's ROM) is copied to $D800-$DFFF, then selected again.  With the card
+; selected and the OS in RAM, a read of $D800-$DFFF finds both the card's
+; ROM and the RAM on the bus: nothing may read there (no floating point).
 ; ============================================================================
 
         .export _os_ram
@@ -22,6 +26,8 @@
 
 PORTB   = $D301
 NMIEN   = $D40E
+PBI_LATCH = $D1FF
+SHPDVS  = $0248                         ; OS shadow of $D1FF
 
 ; GAMECODE: in cfg/atari-rambo.cfg the window $4000-$7FFF in the main RAM
 ; (PORTB bit 0 only changes here, no bank), MAIN is the full one
@@ -36,6 +42,7 @@ _os_ram:
         sei
         lda #0
         sta NMIEN
+        sta PBI_LATCH                   ; card off: the Math Pack is read
         lda #$C0
         sta ptr1+1
         lda #0
@@ -74,6 +81,8 @@ _os_ram:
         sta $E000
         plp
         bne @no                         ; not writable: no RAM there
+        lda SHPDVS                      ; the card selected again
+        sta PBI_LATCH
         lda #$40                        ; the VBI again (the OS default)
         sta NMIEN
         plp
@@ -83,6 +92,8 @@ _os_ram:
 @no:    lda PORTB
         ora #$01
         sta PORTB
+        lda SHPDVS
+        sta PBI_LATCH
         lda #$40
         sta NMIEN
         plp

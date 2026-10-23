@@ -12,7 +12,13 @@
 ;   vector lands on $xxFF) or with IRQ_RETURN (ours: registers restored, RTI).
 ;
 ;   Atari  the OS reaches VIMIRQ ($0216) by JMP (VIMIRQ) with only P and PC
-;          on the stack: IRQ_ENTER pushes A, X, Y itself
+;          on the stack: IRQ_ENTER pushes A, X, Y itself.  The VERA answers
+;          only while its PBI bit is set in $D1FF (Atari PBI rule): IRQ_ENTER
+;          selects the card, because the OS may have deselected it (SIO of
+;          another PBI device), and IRQ_CHAIN / IRQ_RETURN put back the
+;          selection the OS knows of (SHPDVS, plat_atari.s keeps it = the
+;          card).  An IRQ that read the VERA deselected would see ISR & IEN
+;          = $FF and never clear the level IRQ of the VERA
 ;   C64    the KERNAL ($FF48) pushes A, X, Y and jumps through CINV ($0314);
 ;          $EA81 pulls them and returns
 ;   X16    the ROM pushes A, X, Y and jumps through CINV ($0314); the KERNAL
@@ -35,6 +41,9 @@
 .ifdef __ATARI__
 
 IRQ_VECTOR              = $0216                     ; VIMIRQ
+PBI_LATCH               = $D1FF                     ; PBI device select (write)
+SHPDVS                  = $0248                     ; OS shadow of $D1FF
+VERA_PBI_BIT            = $80                       ; the card's PBI device bit
 
 .macro  IRQ_ENTER
         pha
@@ -42,9 +51,13 @@ IRQ_VECTOR              = $0216                     ; VIMIRQ
         pha
         tya
         pha
+        lda #VERA_PBI_BIT
+        sta PBI_LATCH
 .endmacro
 
 .macro  IRQ_CHAIN old
+        lda SHPDVS
+        sta PBI_LATCH
         pla
         tay
         pla
@@ -54,6 +67,8 @@ IRQ_VECTOR              = $0216                     ; VIMIRQ
 .endmacro
 
 .macro  IRQ_RETURN
+        lda SHPDVS
+        sta PBI_LATCH
         pla
         tay
         pla

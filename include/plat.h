@@ -46,6 +46,13 @@ extern unsigned char plat_joy_analog;
 extern unsigned char plat_ntsc;
 
 #if defined(__ATARI__)
+/* Atari XL/XE: the VERA card is a PBI device and answers only while
+ * selected through $D1FF.  libvera selects it at start-up for the whole
+ * run (and takes it out of the OS's PBI polling); call plat_vera_select()
+ * again after OS I/O (SIO / CIO to a disk) only if another PBI device is
+ * present: the OS then deselects every device. */
+void plat_vera_select(void);
+
 /* Atari XL/XE: the OS ROM copied into the RAM under it, ROM off (src/atari/
  * osram.s); then its character set at $E000 can be replaced in place.
  * 1 = done (or already RAM), 0 = no RAM under the OS. */
