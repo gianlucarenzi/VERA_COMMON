@@ -47,6 +47,9 @@ sum:        .res 1
 printed:    .res 1
 outi:       .res 1                      ; column of the next character written
 row_sum:    .res ROWS
+
+    .segment "XBSS"                     ; banked RAM (cx16.cfg): the main RAM is
+                                        ; short; hud_init fills it (not zeroed)
 buf:        .res ROWS * COLS            ; screen codes
 
     .segment "RODATA"
