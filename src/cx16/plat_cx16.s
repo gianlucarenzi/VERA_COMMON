@@ -19,21 +19,17 @@ _plat_ntsc:     .byte 1                 ; the VERA's 60 Hz VGA frame
     .segment "CODE"
 
 ; ----------------------------------------------------------------------------
-; unsigned char plat_joy(void): joystick 0 (the KERNAL keyboard joystick).
+; unsigned char plat_joy(void): the keyboard joystick (KERNAL joystick 0) OR
+; the SNES controller in port 1 (joystick 1), so either can play.
 ; KERNAL byte 0 (active low): B Y SEL STA UP DN LT RT; byte 1: A X L R 1111.
 ; ----------------------------------------------------------------------------
 _plat_joy:
     lda #0
-    jsr JOYSTICK_GET
-    cpy #0
-    bne @none                           ; not present
-    eor #$FF                            ; active high
-    sta tmp
-    txa
-    eor #$FF
-    and #$80                            ; A
-    ora tmp
-    and #$8F                            ; B | A, up, down, left, right
+    jsr joyraw
+    sta tmp2
+    lda #1
+    jsr joyraw
+    ora tmp2                            ; B | A, up, down, left, right
     tax
     lda #0
     cpx #$80                            ; fire: B or A
@@ -47,9 +43,23 @@ _plat_joy:
     ora tmp2
     ldx #0
     rts
+
+; A = KERNAL joystick -> A = active high: bit 7 B or A, bits 3-0 UP DN LT RT;
+; 0 when the joystick is not present
+joyraw:
+    jsr JOYSTICK_GET
+    cpy #0
+    bne @none                           ; not present
+    eor #$FF                            ; active high
+    sta tmp
+    txa
+    eor #$FF
+    and #$80                            ; A
+    ora tmp
+    and #$8F
+    rts
 @none:
     lda #0
-    tax
     rts
 
     .segment "BSS"

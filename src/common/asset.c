@@ -166,24 +166,28 @@ unsigned char __fastcall__ asset_skip(unsigned long n)
 
 unsigned char __fastcall__ asset_vram(unsigned long n)
 {
-#if defined(__CX16__)
-    /* MACPTR straight into DATA0 (dst fixed), no bounce buffer */
-    unsigned got;
-
-    while (n) {
-        cbm_k_chkin(ASSET_LFN);
-        got = asset_macptr_fix(MACPTR_N(n), (void *)0x9F23);
-        cbm_k_clrch();
-        if (!got)
-            return 0;
-        n -= got;
-        if (asset_progress)
-            asset_progress(got);
-    }
-    return 1;
-#else
     unsigned chunk;
+#if defined(__CX16__)
+    /* MACPTR straight into DATA0, no bounce buffer: a fixed destination
+     * (C=1) needs ROM R49 or later (KERNAL version at $FF80: release N = N,
+     * prerelease N = -N, $FF = own build); older ROMs would write it to
+     * $9F23, $9F24, ... */
+    unsigned char v = *(unsigned char *)0xFF80;
 
+    if (v == 0xFF || (v < 0x80 ? v >= 49 : (unsigned char)-v >= 50)) {
+        while (n) {
+            cbm_k_chkin(ASSET_LFN);
+            chunk = asset_macptr_fix(MACPTR_N(n), (void *)0x9F23);
+            cbm_k_clrch();
+            if (!chunk)
+                return 0;
+            n -= chunk;
+            if (asset_progress)
+                asset_progress(chunk);
+        }
+        return 1;
+    }
+#endif
     while (n) {
         chunk = n > ASSET_BUF_SIZE ? ASSET_BUF_SIZE : (unsigned)n;
         if (!asset_read(asset_buf, chunk))
@@ -194,7 +198,6 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
         n -= chunk;
     }
     return 1;
-#endif
 }
 
 unsigned char __fastcall__ asset_load(const char *name, void *dst, unsigned n)
