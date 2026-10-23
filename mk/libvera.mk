@@ -10,6 +10,10 @@
 # The library is built by `make -C $(VERA_COMMON)` (both hosts).
 # C64: the card at $DF00 (IO2, its GeoRAM at $DE00); VERA_BASE=0xDE00 for a
 # card in IO1 without GeoRAM (rebuild the library with it too).
+# C64_CARD_SEL=0: no write of 1 to the RBL-C64 select latch at $DFFD at
+# start-up (a card without the latch, or $DFFD left alone); on the RBL-C64
+# the card is then not selected by the program and its GeoRAM is not
+# enabled (the library rebuilds plat_c64.o by itself when it changes).
 # Apple II: the A2VERA card in slot 4, $C400 (a2emu A2_VERA_SLOT=4);
 # VERA_BASE=0xCn00 for slot n (rebuild the library with it too).
 
@@ -20,6 +24,8 @@ endif
 
 ifeq ($(PLATFORM),c64)
 VERA_BASE ?= 0xDF00
+C64_CARD_SEL ?= 1
+LIBVERA_C64_ASM = -D C64_CARD_SEL=$(C64_CARD_SEL)
 else ifeq ($(PLATFORM),apple2)
 VERA_BASE ?= 0xC400
 endif
@@ -41,7 +47,7 @@ LIBVERA_RMT8_LIB = $(LIBVERA_DIR)/libvera_rmt8.lib # link before the lib: RMT8 (
 LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo))$(if $(filter apple2,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_HGR)),-hgr)).cfg
 
 LIBVERA_CFLAGS  = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_C)
-LIBVERA_ASFLAGS = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_ASM)
+LIBVERA_ASFLAGS = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_ASM) $(LIBVERA_C64_ASM)
 LIBVERA_LDFLAGS = -C $(LIBVERA_CFG) $(LIBVERA_START)
 
 # Atari: the program starts at $2400, above the MEMLO of DOS 2.5 with its

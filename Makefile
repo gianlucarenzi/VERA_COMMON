@@ -164,6 +164,16 @@ $(B)/%.o: src/%.s $(ASINC)
 	@mkdir -p $(dir $@)
 	$(CA65) $(ASFLAGS) $(ASFLAGS4) -o $@ $<
 
+# C64_CARD_SEL (mk/libvera.mk) changes plat_c64.o: rebuilt when it changes
+ifeq ($(PLATFORM),c64)
+$(B)/c64/plat_c64.o: $(B)/card_sel.stamp
+$(B)/card_sel.stamp: FORCE
+	@mkdir -p $(B)
+	@echo '$(C64_CARD_SEL)' | cmp -s - $@ || echo '$(C64_CARD_SEL)' > $@
+endif
+.PHONY: FORCE
+FORCE:
+
 $(B)/psgtab.s: tools/mkpsgtab.py
 	@mkdir -p $(B)
 	$(PYTHON) $< $@
