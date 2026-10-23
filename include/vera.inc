@@ -3,11 +3,12 @@
 ; All symbol names are padded to 24 characters so the '=' falls at column 25.
 ;
 ; Only the base of the 32 registers depends on the host:
-;   Atari  $D100 (PBI device space; the registers answer whether or not the
-;          $D1FF latch selects the card: the latch only maps its ROM)
-;   C64    $DF00 (IO2, registers $DF00-$DF1F; the RBL-C64 card also has its
-;          select latch at $DFFD and the GeoRAM window $DE00-$DEFF with the
-;          page / block registers at $DFFE / $DFFF, no mirrors), or $DE00
+;   Atari  $D100 (PBI device space; the registers answer only while the
+;          $D1FF latch selects the card, Atari PBI rule)
+;   C64    $DF00 (IO2, registers $DF00-$DF1F, answering only while the VERA
+;          is selected by a non-zero write to the latch $DFFD; the GeoRAM of
+;          the RBL-C64 card is always active: window $DE00-$DEFF, page /
+;          block registers at $DFFE / $DFFF, no mirrors), or $DE00
 ;          (IO1, no GeoRAM) with -D VERA_BASE=$DE00
 ;   X16    $9F20
 ;   Apple II  $C400 (A2VERA in slot 4), -D VERA_BASE=$Cn00 for slot n

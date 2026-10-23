@@ -21,7 +21,7 @@ ZP_SIZE     = ZP_LAST - ZP_FIRST + 1
 VIC_CTRL1   = $D011
 VIC_RASTER  = $D012
 CIA1_PRA    = $DC00                     ; port 2 joystick, active low
-CARD_SEL    = $DFFD                     ; VERA Module RBL-C64: select latch
+CARD_SEL    = $DFFD                     ; VERA Module RBL-C64: VERA select latch
 .ifndef C64_CARD_SEL
 C64_CARD_SEL = 1
 .endif
@@ -40,10 +40,11 @@ plat_startup:
     sta zp_saved,x
     dex
     bpl @s
-    ; the RBL-C64 card answers (VERA at $DF00, GeoRAM) only while selected:
-    ; any non-zero value in its latch.  Harmless elsewhere (VICE: a GeoRAM
-    ; register mirror; a card in IO1 at $DE00 leaves IO2 free).
-    ; C64_CARD_SEL=0 (mk/libvera.mk): $DFFD left alone, no GeoRAM
+    ; the VERA of the RBL-C64 card answers at $DF00-$DF1F only while
+    ; selected: any non-zero value in its latch (VICE emulates it too).  The
+    ; GeoRAM of the card is always active; its registers are decoded exactly
+    ; at $DFFE/$DFFF, so the latch does not touch them.
+    ; C64_CARD_SEL=0 (mk/libvera.mk): $DFFD left alone, VERA not selected
 .if C64_CARD_SEL
     lda #1
     sta CARD_SEL

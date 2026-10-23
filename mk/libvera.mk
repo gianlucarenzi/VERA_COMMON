@@ -12,8 +12,9 @@
 # card in IO1 without GeoRAM (rebuild the library with it too).
 # C64_CARD_SEL=0: no write of 1 to the RBL-C64 select latch at $DFFD at
 # start-up (a card without the latch, or $DFFD left alone); on the RBL-C64
-# the card is then not selected by the program and its GeoRAM is not
-# enabled (the library rebuilds plat_c64.o by itself when it changes).
+# the VERA is then not selected by the program and does not answer (its
+# GeoRAM is always active) (the library rebuilds plat_c64.o by itself when
+# it changes).
 # Apple II: the A2VERA card in slot 4, $C400 (a2emu A2_VERA_SLOT=4);
 # VERA_BASE=0xCn00 for slot n (rebuild the library with it too).
 
