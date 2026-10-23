@@ -80,23 +80,20 @@ _os_ram:
         eor #$FF
         sta $E000
         plp
-        bne @no                         ; not writable: no RAM there
+        beq @ram                        ; writable: RAM there, the ROM stays off
+        lda PORTB                       ; not writable: no RAM there, ROM on
+        ora #$01
+        sta PORTB
+        ldy #0                          ; result 0
+        .byte $2C                       ; BIT abs: skips the LDY #1
+@ram:   ldy #1                          ; result 1
         lda SHPDVS                      ; the card selected again
         sta PBI_LATCH
         lda #$40                        ; the VBI again (the OS default)
         sta NMIEN
         plp
+        tya
+        .byte $2C                       ; BIT abs: skips the LDA #1
 @yes:   lda #1
         ldx #0
-        rts
-@no:    lda PORTB
-        ora #$01
-        sta PORTB
-        lda SHPDVS
-        sta PBI_LATCH
-        lda #$40
-        sta NMIEN
-        plp
-        lda #0
-        tax
         rts
