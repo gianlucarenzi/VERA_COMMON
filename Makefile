@@ -64,6 +64,8 @@ AS_SRC += src/atari/rmtpokey.s src/atari/basicoff.s src/atari/xexchunks.s src/at
 else ifeq ($(PLATFORM),c64)
 AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
+else ifeq ($(PLATFORM),cx16)
+AS_SRC += src/cx16/macptr.s
 endif
 OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \
           $(B)/psgtab.o $(HOST_OBJS)

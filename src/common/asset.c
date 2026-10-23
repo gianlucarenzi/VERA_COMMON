@@ -21,7 +21,16 @@
 
 unsigned char asset_buf[ASSET_BUF_SIZE];
 
+#if defined(__CX16__)
+/* the X16: the KERNAL channel of the file, read with MACPTR (macptr.s)
+ * instead of read()'s CHRIN per byte */
+#define ASSET_LFN 3
+unsigned __fastcall__ asset_macptr(unsigned char n, void *dst);
+unsigned __fastcall__ asset_macptr_fix(unsigned char n, void *dst);
+static unsigned char fd_open;
+#else
 static int fd = -1;
+#endif
 
 #if defined(__ATARI__)
 static char path[2 + 12 + 1] = "D:";
@@ -29,8 +38,10 @@ static char path[2 + 12 + 1] = "D:";
 
 unsigned char __fastcall__ asset_open(const char *name)
 {
-#if defined(__ATARI__)
+#if defined(__ATARI__) || defined(__CX16__)
     unsigned char i;
+#endif
+#if defined(__ATARI__)
     char c;
 #endif
 
@@ -45,12 +56,27 @@ unsigned char __fastcall__ asset_open(const char *name)
     /* no DOS under the a2fs boot sector: open() needs ProDOS (the game
        reads the microSD, libvera_sd.lib) */
     fd = open(name, O_RDONLY);
+#elif defined(__CX16__)
+    if (cbm_open(ASSET_LFN, 8, 2, name))
+        return 0;
+    fd_open = 1;
+    /* a missing file shows in the status once the channel talks */
+    cbm_k_chkin(ASSET_LFN);
+    i = cbm_k_readst();
+    cbm_k_clrch();
+    if (i) {
+        asset_close();
+        return 0;
+    }
+    return 1;
 #else
     /* the build writes the files as PRG (c1541 -write) */
     _filetype = 'p';
     fd = open(name, O_RDONLY);
 #endif
+#if !defined(__CX16__)
     return fd >= 0;
+#endif
 }
 
 /* disks: no streaming, asset_read as always */
@@ -61,14 +87,49 @@ unsigned char asset_stream(void)
 
 void asset_close(void)
 {
+#if defined(__CX16__)
+    if (fd_open) {
+        cbm_close(ASSET_LFN);
+        fd_open = 0;
+    }
+#else
     if (fd >= 0) {
         close(fd);
         fd = -1;
     }
+#endif
 }
 
 void (*asset_progress)(unsigned n);
 
+#if defined(__CX16__)
+/* the MACPTR count for n bytes left: 0 = to the end of the sector (<= 512) */
+#define MACPTR_N(n) ((n) >= 512 ? 0 : (n) > 255 ? 255 : (unsigned char)(n))
+
+unsigned char __fastcall__ asset_read(void *dst, unsigned n)
+{
+    unsigned got;
+    unsigned char *p = (unsigned char *)dst;
+    unsigned n0 = n;
+
+    /* the channel only while reading: GETIN of the game must see the
+     * keyboard */
+    cbm_k_chkin(ASSET_LFN);
+    while (n) {
+        got = asset_macptr(MACPTR_N(n), p);
+        if (!got)
+            break;
+        p += got;
+        n -= got;
+    }
+    cbm_k_clrch();
+    if (n)
+        return 0;
+    if (asset_progress)
+        asset_progress(n0);
+    return 1;
+}
+#else
 unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 {
     int got;
@@ -88,6 +149,7 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
         asset_progress(n0);
     return 1;
 }
+#endif
 
 unsigned char __fastcall__ asset_skip(unsigned long n)
 {
@@ -104,6 +166,22 @@ unsigned char __fastcall__ asset_skip(unsigned long n)
 
 unsigned char __fastcall__ asset_vram(unsigned long n)
 {
+#if defined(__CX16__)
+    /* MACPTR straight into DATA0 (dst fixed), no bounce buffer */
+    unsigned got;
+
+    while (n) {
+        cbm_k_chkin(ASSET_LFN);
+        got = asset_macptr_fix(MACPTR_N(n), (void *)0x9F23);
+        cbm_k_clrch();
+        if (!got)
+            return 0;
+        n -= got;
+        if (asset_progress)
+            asset_progress(got);
+    }
+    return 1;
+#else
     unsigned chunk;
 
     while (n) {
@@ -116,6 +194,7 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
         n -= chunk;
     }
     return 1;
+#endif
 }
 
 unsigned char __fastcall__ asset_load(const char *name, void *dst, unsigned n)
