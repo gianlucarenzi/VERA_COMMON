@@ -21,6 +21,7 @@ ZP_SIZE     = ZP_LAST - ZP_FIRST + 1
 VIC_CTRL1   = $D011
 VIC_RASTER  = $D012
 CIA1_PRA    = $DC00                     ; port 2 joystick, active low
+CARD_SEL    = $DFFD                     ; VERA Module RBL-C64: select latch
 
     .segment "DATA"
 
@@ -36,6 +37,11 @@ plat_startup:
     sta zp_saved,x
     dex
     bpl @s
+    ; the RBL-C64 card answers (VERA at $DF00, GeoRAM) only while selected:
+    ; any non-zero value in its latch.  Harmless elsewhere (VICE: a GeoRAM
+    ; register mirror; a card in IO1 at $DE00 leaves IO2 free)
+    lda #1
+    sta CARD_SEL
     ; PAL / NTSC: the low byte of the last raster line is $37 on PAL
     ; (312 lines), $05 / $06 on NTSC (262 / 263 lines)
     php
