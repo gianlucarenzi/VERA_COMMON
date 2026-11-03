@@ -203,16 +203,31 @@ frame:
         sta acc
         lda _rmt_ispeed
         sta calls
+        ; the window found goes on the stack, not in a variable: the
+        ; callback runs with interrupts on and may be interrupted by
+        ; itself; with one variable the outer one gave back the song bank
+        ; to the program (RastanRIP 2026-11-03: the Atari crashed with the
+        ; game's tables in a RAMbo bank during the composition)
+.if .defined(__ATARI__)
+        lda PORTB
+        pha
+.elseif .defined(__CX16__)
+        lda RAM_BANK
+        pha
+.endif
         lda _rmt_bank                   ; the song bank in
         beq @play
         SONG_IN irq_bank
 @play:  jsr player_play                 ; RMT: writes pokey_shadow
         dec calls
         bne @play
-        lda _rmt_bank
-        beq :+
-        SONG_OUT irq_bank
-:
+.if .defined(__ATARI__)
+        pla
+        sta PORTB
+.elseif .defined(__CX16__)
+        pla
+        sta RAM_BANK
+.endif
         inc _rmt_frames
         bne @psg
         inc _rmt_frames+1
