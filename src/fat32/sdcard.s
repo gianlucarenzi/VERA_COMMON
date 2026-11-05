@@ -491,6 +491,7 @@ sdcard_stream_stop:
 @busy:	jsr wait_ready
 	jmp deselect
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; sdcard_write_sector
 ; Set sector_lba prior to calling this function.
@@ -559,6 +560,7 @@ sdcard_write_sector:
 	jsr deselect
 	clc
 	rts
+.endif ; FAT32_READONLY
 
 ;-----------------------------------------------------------------------------
 ; sdcard_check_alive

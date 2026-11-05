@@ -106,6 +106,15 @@ ifeq ($(PLATFORM),atari)
 FAT32_OBJS += $(B)/atari/sdbank.o
 endif
 
+# FAT32_READONLY (libvera_sdro.lib): no create / write / delete / rename /
+# mkdir, nothing written back (sync, close): the read-only programs (RastanRIP
+# on C64 and Apple II) get ~3.3 KB of RAM back
+FAT32_RO_OBJS = $(patsubst $(B)/fat32_%.o,$(B)/fat32ro_%.o,$(filter-out $(B)/atari/sdbank.o,$(FAT32_OBJS)))
+$(B)/fat32ro_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
+	@mkdir -p $(B)
+	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) $(FAT32_BANK) -D FAT32_READONLY=1 \
+	    -I src/fat32 -I include -o $@ $<
+
 $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 	@mkdir -p $(B)
 	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) $(FAT32_BANK) \
@@ -125,6 +134,7 @@ all:
 one: lib test disk
 
 lib: $(LIBVERA_LIB) $(LIBVERA_LZS) $(if $(filter cx16,$(PLATFORM)),,$(LIBVERA_SD_LIB)) \
+     $(if $(filter c64 apple2,$(PLATFORM)),$(LIBVERA_SDRO_LIB)) \
      $(if $(filter atari,$(PLATFORM)),$(LIBVERA_DSK_LIB)) $(LIBVERA_RMT8_LIB)
 
 $(LIBVERA_LIB): $(OBJS)
@@ -152,6 +162,9 @@ $(B)/rmt8/%.o: src/%.s $(ASINC)
 
 # the asset.h functions on the microSD and the FAT32 code they use
 $(LIBVERA_SD_LIB): $(B)/common/asset_sd.o $(FAT32_OBJS) $(ASSET_USERS)
+	rm -f $@
+	$(AR65) a $@ $^
+$(LIBVERA_SDRO_LIB): $(B)/common/asset_sd.o $(FAT32_RO_OBJS) $(ASSET_USERS)
 	rm -f $@
 	$(AR65) a $@ $^
 

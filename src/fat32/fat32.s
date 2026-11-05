@@ -17,7 +17,10 @@
 .import match_name, match_type
 
 ; mkfs.s
-.export load_mbr_sector, write_sector, clear_buffer, set_errno, unmount
+.export load_mbr_sector, set_errno, unmount
+.ifndef FAT32_READONLY
+.export write_sector, clear_buffer
+.endif
 
 ; imports from DOS bank
 .import fat32_size
@@ -156,8 +159,12 @@ _fat32_bss_end:
 .export fat32_chdir
 .export fat32_contiguous, fat32_stream_lba   ; (libvera)
 .export fat32_close
+.ifndef FAT32_READONLY
 .export fat32_create
+.endif
+.ifndef FAT32_READONLY
 .export fat32_delete
+.endif
 .export fat32_find_dirent
 .export fat32_free_context
 .export fat32_get_context
@@ -167,7 +174,9 @@ _fat32_bss_end:
 .export fat32_get_ptable_entry
 .export fat32_get_vollabel
 .export fat32_init
+.ifndef FAT32_READONLY
 .export fat32_mkdir
+.endif
 .export fat32_next_sector
 .export fat32_open
 .export fat32_open_dir
@@ -176,17 +185,31 @@ _fat32_bss_end:
 .export fat32_read_byte
 .export fat32_read_dirent
 .export fat32_read_dirent_filtered
+.ifndef FAT32_READONLY
 .export fat32_rename
+.endif
+.ifndef FAT32_READONLY
 .export fat32_rmdir
+.endif
 .export fat32_seek
+.ifndef FAT32_READONLY
 .export fat32_set_attribute
+.endif
 .export fat32_set_context
+.ifndef FAT32_READONLY
 .export fat32_set_vollabel
+.endif
 .export fat32_walk_tree
+.ifndef FAT32_READONLY
 .export fat32_write
+.endif
+.ifndef FAT32_READONLY
 .export fat32_write_byte
+.endif
 .export sync_sector_buffer
+.ifndef FAT32_READONLY
 .export fat32_set_time
+.endif
 .export fat32_get_size
 .export fat32_get_lba
 .export fat32_get_cluster
@@ -304,13 +327,14 @@ set_errno:
 ; * c=0: failure; sets errno
 ;-----------------------------------------------------------------------------
 sync_sector_buffer:
+.ifndef FAT32_READONLY
 	; Write back sector buffer if dirty
 	lda cur_context + context::flags
 	bitimm FLAG_DIRTY
 	beq @done
 	jmp save_sector_buffer
-
-@done:	sec
+.endif
+@done:	sec				; (FAT32_READONLY: never dirty)
 	rts
 
 ;-----------------------------------------------------------------------------
@@ -335,6 +359,7 @@ load_sector_buffer:
 	lda #ERRNO_READ
 	jmp set_errno
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; write_sector
 ;
@@ -391,6 +416,7 @@ save_sector_buffer:
 	lda #ERRNO_WRITE
 	jmp set_errno
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; calc_cluster_lba
 ;-----------------------------------------------------------------------------
@@ -504,6 +530,7 @@ next_cluster:
 @error:	clc
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; unlink_cluster_chain
 ;
@@ -631,6 +658,7 @@ find_free_cluster:
 @2:	set16_val fat32_bufptr, sector_buffer
 	jmp @next
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_alloc_context
 ;
@@ -713,6 +741,7 @@ fat32_get_num_contexts:
 	tya
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; update_fs_info
 ;
@@ -845,6 +874,8 @@ create_shortname:
 	sta lfn_checksum
 	rts
 
+.endif ; FAT32_READONLY
+.ifndef FAT32_READONLY
 hexbuf8:
 	pha
 	lsr
@@ -863,6 +894,7 @@ hexbuf4:
 	inx
 	rts
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; open_cluster
 ;
@@ -891,6 +923,7 @@ readsector:
 	sec
 @done:	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; clear_buffer
 ;-----------------------------------------------------------------------------
@@ -930,6 +963,7 @@ clear_cluster:
 	sec
 	rts
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; next_sector
 ; A: bit0 - allocate cluster if at end of cluster chain
@@ -967,6 +1001,10 @@ next_sector:
 	bra @read_sector
 
 @end_of_chain:
+.ifdef FAT32_READONLY
+@error:	clc				; (libvera FAT32_READONLY: never allocate)
+	rts
+.else
 	; Request to allocate new cluster?
 	lda next_sector_arg
 	bitimm $01
@@ -1014,6 +1052,7 @@ next_sector:
 @wrdone:
 	; Retry
 	jmp @read_cluster
+.endif
 
 ;-----------------------------------------------------------------------------
 ; find_dirent
@@ -1137,6 +1176,7 @@ find_dir:
 	lda #$40 ; directories only
 	jmp find_dirent
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; delete_entry
 ;
@@ -1215,6 +1255,7 @@ delete_file2:
 	set32 cur_context + context::cluster, fat32_dirent + dirent::start
 	jmp unlink_cluster_chain
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_init
 ;
@@ -2003,6 +2044,7 @@ decode_lfn_chars:
 	clc
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; encode_lfn_chars
 ;
@@ -2134,6 +2176,7 @@ create_lfn:
 	sec
 	rts
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_read_dirent_filtered
 ;
@@ -2188,6 +2231,7 @@ fat32_chdir:
 @error:	clc
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_rename
 ;
@@ -2408,6 +2452,7 @@ fat32_rmdir:
 	set32 cur_context + context::cluster, fat32_dirent + dirent::start
 	jmp unlink_cluster_chain
 
+.endif ; FAT32_READONLY
 check_dot_or_dotdot:
 	lda fat32_dirent + dirent::name
 	cmp #'.'
@@ -2479,6 +2524,7 @@ fat32_open:
 	sec
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; find_space_for_lfn
 ;
@@ -2536,6 +2582,7 @@ find_space_for_lfn:
 	; -> set pointer to first free entry
 	jmp rewind_dir_entry
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; mark_dir_entry
 ;
@@ -2606,6 +2653,7 @@ rewind_dir_entry:
 	; load
 	jmp load_sector_buffer
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; write_lfn_entries
 ;
@@ -2846,6 +2894,7 @@ fat32_mkdir:
 
 	jmp fat32_close
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_close
 ;
@@ -2860,6 +2909,7 @@ fat32_close:
 	bne :+
 	jmp @done
 :
+.ifndef FAT32_READONLY
 	; Write current sector if dirty
 	jsr sync_sector_buffer
 	bcs :+
@@ -2988,6 +3038,7 @@ fat32_close:
 	; Write directory sector
 	jsr save_sector_buffer
 	bcc error_clear_context
+.endif
 @done:
 	clear_bytes cur_context, .sizeof(context)
 
@@ -3232,6 +3283,7 @@ fat32_contiguous:
 	jmp open_cluster
 
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; allocate_first_cluster
 ;
@@ -3459,6 +3511,7 @@ fat32_write:
 	cpy bytecnt
 	bne @lda
 	jmp @4d
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_get_free_space
 ;-----------------------------------------------------------------------------
@@ -3553,6 +3606,7 @@ fat32_get_vollabel:
 @error:	clc
 	rts
 
+.ifndef FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; fat32_set_vollabel
 ;
@@ -3623,6 +3677,7 @@ fat32_set_vollabel:
 @error:	clc
 	rts
 
+.endif ; FAT32_READONLY
 ;-----------------------------------------------------------------------------
 ; load_mbr_sector
 ;
@@ -4006,6 +4061,7 @@ fat32_walk_tree:
 @dotdot:
 	.byte "..",0
 
+.ifndef FAT32_READONLY
 fat32_set_time:
 	lda 2
 	sta fat32_time_year
@@ -4020,3 +4076,5 @@ fat32_set_time:
 	lda 7
 	sta fat32_time_seconds
 	rts
+
+.endif ; FAT32_READONLY
