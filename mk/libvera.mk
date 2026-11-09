@@ -38,15 +38,19 @@ endif
 LIBVERA_DIR     = $(VERA_COMMON)/build/$(PLATFORM)
 LIBVERA_LIB     = $(LIBVERA_DIR)/libvera.lib
 LIBVERA_LZS     = $(LIBVERA_DIR)/lzsplayr.o     # link before the lib: SAP/XEX songs
-LIBVERA_SD_LIB  = $(LIBVERA_DIR)/libvera_sd.lib # link before the lib: asset.h from the microSD (Atari, C64, Apple II)
-LIBVERA_SDRO_LIB = $(LIBVERA_DIR)/libvera_sdro.lib # the same, FAT32 read only (FAT32_READONLY: -3.3 KB; C64, Apple II)
+LIBVERA_SD_LIB  = $(LIBVERA_DIR)/libvera_sd.lib # link before the lib: the microSD, read and write (sdfs.h; asset.h from it; Atari, C64, Apple II)
+LIBVERA_SDRO_LIB = $(LIBVERA_DIR)/libvera_sdro.lib # the same read only, for the programs short of memory (FAT32_READONLY: -3.3 KB; C64, Apple II)
 LIBVERA_DSK_LIB = $(LIBVERA_DIR)/libvera_dsk.lib # link before the lib: asset.h from a DOS 2 disk, music safe (Atari)
 LIBVERA_RMT8_LIB = $(LIBVERA_DIR)/libvera_rmt8.lib # link before the lib: RMT8 (stereo) songs, Atari rmt_init_hybrid
 # Atari: LIBVERA_RAMBO = 1 (needed with LIBVERA_SD_LIB) -> cfg/atari-rambo.cfg,
 # the FAT32 code in a RAMbo bank (src/atari/sdbank.s)
 # Apple II: LIBVERA_HGR = 1 -> cfg/apple2-hgr.cfg, the HGR page 1 kept free
 # (the program in two pieces around $2000-$3FFF, for a loader of its own)
-LIBVERA_CFG     = $(VERA_COMMON)/cfg/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo))$(if $(filter apple2,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_HGR)),-hgr)).cfg
+# LIBVERA_CFG_DIR: the linker configurations, the generic ones of libvera
+# by default; a program with needs of its own keeps its own copies (the same
+# names) in its tree and sets LIBVERA_CFG_DIR before including this file
+LIBVERA_CFG_DIR ?= $(VERA_COMMON)/cfg
+LIBVERA_CFG     = $(LIBVERA_CFG_DIR)/$(PLATFORM)$(if $(filter atari,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_RAMBO)),-rambo))$(if $(filter apple2,$(PLATFORM)),$(if $(filter 1,$(LIBVERA_HGR)),-hgr)).cfg
 
 LIBVERA_CFLAGS  = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_C)
 LIBVERA_ASFLAGS = -t $(PLATFORM) -I $(VERA_COMMON)/include $(LIBVERA_BASE_ASM) $(LIBVERA_C64_ASM)
