@@ -56,7 +56,34 @@ unsigned __fastcall__ sd_read(void *dst, unsigned n);
  * with vram_seek): straight from the sector buffer to VRAM. */
 unsigned __fastcall__ sd_read_vram(unsigned n);
 
-void sd_close(void);
+/* Close the open file or directory.  A file written is complete on the
+ * card only now (its last sector, its directory entry, the FAT): 1 = ok.
+ * With libvera_sdro.lib there is nothing to write back and the value means
+ * nothing. */
+unsigned char sd_close(void);
+
+/* Writing (libvera_sd.lib, the default).  libvera_sdro.lib, the FAT32 code
+ * built read only for the programs short of memory (LIBVERA_SDRO_LIB: about
+ * 3.3 KB less), has none of these: a program that calls them does not link
+ * with it.  One file open at a time, as for reading. */
+
+/* A new file, open to write: an existing one is replaced if overwrite,
+ * else SD_ERR_EXISTS.  1 = ok. */
+unsigned char __fastcall__ sd_create(const char *path, unsigned char overwrite);
+
+/* n bytes to the file open to write; 1 = all written. */
+unsigned char __fastcall__ sd_write(const void *src, unsigned n);
+
+/* n bytes from the VERA data port 0 (the caller has set the address with
+ * vram_seek) to the file open to write; 1 = all written. */
+unsigned char __fastcall__ sd_write_vram(unsigned n);
+
+/* Delete a file, rename (or move) a file or directory, make a directory,
+ * remove an empty one; 1 = ok.  No file may be open. */
+unsigned char __fastcall__ sd_delete(const char *path);
+unsigned char __fastcall__ sd_rename(const char *from, const char *to);
+unsigned char __fastcall__ sd_mkdir(const char *path);
+unsigned char __fastcall__ sd_rmdir(const char *path);
 
 /* The open file as one stream (src/fat32/sdstream.s): sd_stream_start right
  * after sd_open (1 = the file is contiguous and the card streams it, 0 =

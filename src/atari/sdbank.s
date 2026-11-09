@@ -12,8 +12,9 @@
 ; $4000-$7FFF (cfg/atari-rambo.cfg: only the GAMECODE / GAMERODATA segments of
 ; the program go there).  What the FAT32 code reads from the caller is
 ; copied out of the window first:
-;   the path         -> path_buf
+;   the path         -> path_buf (sd_rename: the new name -> path2_buf, sdbankw.s)
 ;   sd_read to a dst in $4000-$7FFF -> through bounce (256 bytes a time)
+;   sd_write         -> through bounce, 256 bytes a time (sdbankw.s)
 ;   sd_dirent        <- copied from the bank after sd_readdir
 ;
 ; Loading: chunks of the executable (cfg/atari-rambo.cfg) switch the bank in
@@ -28,6 +29,9 @@
         .import bk_sd_close, bk_sd_opendir, bk_sd_readdir, bk_sd_chdir
         .import bk_sd_errno, bk_sd_dirent
         .import bk_sd_stream_start, bk_sd_stream_stop
+        .export sdb_copy_path := copy_path, sdb_path := path_buf
+        .export sdb_save := save, sdb_ta := ta, sdb_tx := tx, sdb_bounce := bounce
+        .export sdb_cl := cl, sdb_ch := ch, sdb_nl := nl, sdb_nh := nh  ; for sdbankw.s
         .import popax, pushax
         .importzp ptr1, ptr2
         .import __BANKON_LOAD__, __BANKON_SIZE__
@@ -36,12 +40,10 @@
         .import __BANKBSS_RUN__, __BANKBSS_SIZE__
         .forceimport __ATARI_RAMBO_CFG__ ; cfg/atari-rambo.cfg, not atari.cfg
 
-PORTB       = $D301
-INITAD      = $02E2
-SD_BANK     = %00000000                 ; bits 2, 3, 5, 6; bit 4 = 0: CPU
-KEEP        = %10000011                 ; self test, BASIC, OS ROM bits
-PATH_MAX    = 128                       ; as NAME_MAX of sdfs.s
-DIRENT_SIZE = 256 + 1 + 4 + 4 + 6       ; struct sd_dirent
+SAVE = save
+TA   = ta
+TX   = tx
+        .include "sdbank.inc"
 
         .bss
 _sd_dirent: .res DIRENT_SIZE
@@ -57,32 +59,8 @@ ch:         .res 1
 gl:         .res 1                      ; read so far
 gh:         .res 1
 
-.macro  BANK_IN                         ; A lost
-        lda PORTB
-        sta save
-        and #KEEP
-        ora #SD_BANK
-        sta PORTB
-.endmacro
-
-.macro  BANK_OUT                        ; A, X kept
-        ldy save
-        sty PORTB
-.endmacro
-
         .code
 
-; call A/X -> bk function with the bank in, A/X back
-.macro  CALL fn
-        sta ta
-        stx tx
-        BANK_IN
-        lda ta
-        ldx tx
-        jsr fn
-        BANK_OUT
-        rts
-.endmacro
 
 _sd_mount:      CALL bk_sd_mount
 _sd_close:      CALL bk_sd_close

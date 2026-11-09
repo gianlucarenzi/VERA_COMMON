@@ -17,6 +17,8 @@
 .import fat32_contiguous, fat32_stream_lba, sector_lba
 .import sdcard_stream_start, sdcard_stream_stop
 .import popax
+.export sd_set_name := set_name, sd_name_buf := name_buf
+.export sd_ret_carry := ret_carry   ; for sdfsw.s, the writing
 
 .ifdef FAT32_BANKED
 ; in the RAMbo bank (seg.inc): the C names are the trampolines of
@@ -139,10 +141,18 @@ read:
 	rts
 
 ;-----------------------------------------------------------------------------
-; void sd_close(void)
+; unsigned char sd_close(void): a file written is complete on the card only
+; now (the last sector, the directory entry, the FAT); 1 = ok.  Read only
+; (FAT32_READONLY) nothing is written back: no value, not a byte more
 ;-----------------------------------------------------------------------------
 _sd_close:
+.ifdef FAT32_READONLY
 	jmp fat32_close
+.else
+	jsr fat32_close
+	jmp ret_carry
+.endif
+
 
 ;-----------------------------------------------------------------------------
 ; unsigned char sd_stream_start(void)

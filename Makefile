@@ -103,13 +103,17 @@ endif
 
 FAT32_OBJS = $(patsubst src/fat32/%.s,$(B)/fat32_%.o,$(wildcard src/fat32/*.s))
 ifeq ($(PLATFORM),atari)
-FAT32_OBJS += $(B)/atari/sdbank.o
+FAT32_OBJS += $(B)/atari/sdbank.o $(B)/atari/sdbankw.o
 endif
 
-# FAT32_READONLY (libvera_sdro.lib): no create / write / delete / rename /
-# mkdir, nothing written back (sync, close): the read-only programs (RastanRIP
-# on C64 and Apple II) get ~3.3 KB of RAM back
-FAT32_RO_OBJS = $(patsubst $(B)/fat32_%.o,$(B)/fat32ro_%.o,$(filter-out $(B)/atari/sdbank.o,$(FAT32_OBJS)))
+# libvera_sd.lib reads and writes (sdfs.h); the C functions of the writing
+# are modules of their own (src/fat32/sdfsw.s, Atari src/atari/sdbankw.s),
+# linked only by the programs that write.  FAT32_READONLY (libvera_sdro.lib):
+# no create / write / delete / rename / mkdir in the FAT32 code either,
+# nothing written back (sync, close): the read-only programs short of memory
+# (RastanRIP on C64 and Apple II) get ~3.3 KB of RAM back; the Atari keeps
+# the FAT32 code in a RAMbo bank, out of the main RAM, and has no such one
+FAT32_RO_OBJS = $(patsubst $(B)/fat32_%.o,$(B)/fat32ro_%.o,$(filter-out $(B)/atari/sdbank.o $(B)/atari/sdbankw.o,$(FAT32_OBJS)))
 $(B)/fat32ro_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 	@mkdir -p $(B)
 	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) $(FAT32_BANK) -D FAT32_READONLY=1 \
@@ -123,7 +127,7 @@ $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
-.PHONY: all one lib test disk run-atari run-c64 run-x16 run-apple2 clean prof-pcm prof-sfx
+.PHONY: all one lib test test-sdwrite disk run-atari run-c64 run-x16 run-apple2 clean prof-pcm prof-sfx
 
 all:
 	$(MAKE) PLATFORM=atari one
@@ -319,6 +323,18 @@ $(B)/test_sdfs_minimal.$(EXE): $(B)/test_sdfs_minimal.o $(FAT32_OBJS) $(LIBVERA_
 $(B)/test_rastan_sd.$(EXE): $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
 	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_rastan_sd.map -o $@ \
 	    $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB)
+
+# writing on the card (sdfs.h: create, write, delete, rename, mkdir):
+# tests/test_sdwrite.c, the image looked at afterwards (its header)
+test-sdwrite: $(B)/test_sdwrite.$(EXE)
+$(B)/test_sdwrite.$(EXE): LIBVERA_RAMBO = 1
+$(B)/test_sdwrite.$(EXE): $(B)/test_sdwrite.o $(FAT32_OBJS) $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_sdwrite.map -o $@ \
+	    $(B)/test_sdwrite.o $(FAT32_OBJS) $(LIBVERA_LIB)
+
+$(B)/test_sdwrite.o: tests/test_sdwrite.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_sdwrite.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_sdwrite.s
 
 $(B)/test_rastan_sd.o: tests/test_rastan_sd.c $(HEADERS)
 	$(CC65) $(CFLAGS) -o $(B)/test_rastan_sd.s $<
