@@ -110,6 +110,10 @@ tmp_dir_cluster:     .dword 0
 tmp_attrib:          .byte 0       ; temporary: attribute when creating a dir entry
 tmp_dirent_flag:     .byte 0
 shortname_buf:       .res 11       ; Used for shortname creation
+.ifndef FAT32_READONLY
+sn_dot:              .byte 0       ; (libvera) create_shortname: the last dot
+sn_lossy:            .byte 0       ; (libvera) create_shortname: not 8.3 as it is
+.endif
 tmp_timestamp:       .byte 0
 tmp_filetype:        .byte 0       ; Used to match file type in find_dirent
 
@@ -826,22 +830,70 @@ validate_char:
 ;-----------------------------------------------------------------------------
 ; create_shortname
 ;
+; (libvera) The 8.3 name of the entry for the name at fat32_ptr +
+; name_offset, as Windows makes them: the name itself in capitals when it is
+; an 8.3 name already (valid characters, base <= 8, extension <= 3);
+; otherwise its first 2 valid characters, 4 hex digits of the place of the
+; entry (unique in the directory) and "~1", then up to 3 characters of its
+; extension (e.g. "MI3F02~1.TXT").  The long name is always written too.
+; (The X16 made it from the place alone: "00001002.~E~".)
+;
 ; * c=0: failure; sets errno
 ;-----------------------------------------------------------------------------
 create_shortname:
-	ldx #0
-	lda marked_entry_lba + 3
-	jsr hexbuf8
-	lda marked_entry_lba + 2
-	jsr hexbuf8
-	lda marked_entry_lba + 1
-	jsr hexbuf8
-	lda marked_entry_lba + 0
-	jsr hexbuf8
-	lda #'~'
-	sta shortname_buf, x
-	inx
-	lda fat32_bufptr + 0
+	ldx #10                         ; blank
+	lda #' '
+@sp:	sta shortname_buf, x
+	dex
+	bpl @sp
+	lda #$FF                        ; the last dot, not the first character
+	sta sn_dot
+	ldy name_offset
+@dot:	lda (fat32_ptr), y
+	beq @base
+	cmp #'.'
+	bne @nd
+	cpy name_offset
+	beq @nd
+	sty sn_dot
+@nd:	iny
+	bne @dot
+@base:	lda #0
+	sta sn_lossy
+	tax
+	ldy name_offset
+@b:	cpy sn_dot                      ; the base: up to 8
+	beq @ext
+	lda (fat32_ptr), y
+	beq @end
+	jsr sn_char
+	bcs @bn
+	cpx #8
+	jsr sn_put
+@bn:	iny
+	bne @b
+@ext:	ldx #8                          ; the extension: up to 3
+@e:	iny
+	lda (fat32_ptr), y
+	beq @end
+	jsr sn_char
+	bcs @e
+	cpx #11
+	jsr sn_put
+	jmp @e
+@end:
+	lda shortname_buf               ; no base, or not 8.3: mangled
+	cmp #' '
+	beq @mangle
+	lda sn_lossy
+	beq @checksum
+@mangle:
+	lda shortname_buf               ; no base: "_"
+	cmp #' '
+	bne :+
+	lda #'_'
+	sta shortname_buf
+:	lda fat32_bufptr + 0            ; the entry in its sector, 0-15
 	sec
 	sbc #<sector_buffer
 	pha
@@ -854,11 +906,27 @@ create_shortname:
 	lsr
 	lsr
 	lsr
-	jsr hexbuf4
+	sta sn_dot
+	lda marked_entry_lba + 1        ; 4 hex digits: the sector and the entry
+	eor marked_entry_lba + 3
+	asl
+	asl
+	asl
+	asl
+	ora sn_dot
+	pha
+	ldx #2
+	lda marked_entry_lba + 0
+	eor marked_entry_lba + 2
+	jsr hexbuf8
+	pla
+	jsr hexbuf8
 	lda #'~'
-	sta shortname_buf, x
+	sta shortname_buf + 6
+	lda #'1'
+	sta shortname_buf + 7
 
-	; Checksum
+@checksum:
 	lda #0
 	tay
 @checksum_loop:
@@ -872,6 +940,59 @@ create_shortname:
 	cpy #11
 	bne @checksum_loop
 	sta lfn_checksum
+	sec
+	rts
+
+; a character of the name in A: C = 1 skip it (a space, a dot); else the
+; one of the 8.3 name in A (capitals; "_" for one not allowed there).  The
+; name not 8.3 as it is: sn_lossy <> 0
+sn_char:
+	cmp #'.'
+	beq @skip
+	cmp #' ' + 1
+	bcc @skip
+	cmp #$7F
+	bcs @bad
+	cmp #'a'
+	bcc @1
+	cmp #'z' + 1
+	bcs @1
+	and #$DF
+	clc
+	rts
+@1:	cmp #'"'
+	beq @bad
+	cmp #'|'
+	beq @bad
+	cmp #'/'
+	beq @bad
+	cmp #'*'                        ; * + ,
+	bcc @ok
+	cmp #','  + 1
+	bcc @bad
+	cmp #':'                        ; : ; < = > ?
+	bcc @ok
+	cmp #'?' + 1
+	bcc @bad
+	cmp #'['                        ; [ \ ]
+	bcc @ok
+	cmp #']' + 1
+	bcs @ok
+@bad:	sta sn_lossy
+	lda #'_'
+@ok:	clc
+	rts
+@skip:	sta sn_lossy
+	sec
+	rts
+
+; A to shortname_buf, x unless past its end (C, from the cpx before: then
+; the name is not 8.3 as it is)
+sn_put:	bcs @long
+	sta shortname_buf, x
+	inx
+	rts
+@long:	sta sn_lossy
 	rts
 
 .endif ; FAT32_READONLY

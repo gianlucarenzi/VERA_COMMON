@@ -111,9 +111,12 @@ endif
 # linked only by the programs that write.  FAT32_READONLY (libvera_sdro.lib):
 # no create / write / delete / rename / mkdir in the FAT32 code either,
 # nothing written back (sync, close): the read-only programs short of memory
-# (RastanRIP on C64 and Apple II) get ~3.3 KB of RAM back; the Atari keeps
-# the FAT32 code in a RAMbo bank, out of the main RAM, and has no such one
+# (RastanRIP) get ~3.3 KB of RAM back: on the C64 and the Apple II in the
+# main RAM, on the Atari in the RAMbo bank of the FAT32 code
 FAT32_RO_OBJS = $(patsubst $(B)/fat32_%.o,$(B)/fat32ro_%.o,$(filter-out $(B)/atari/sdbank.o $(B)/atari/sdbankw.o,$(FAT32_OBJS)))
+ifeq ($(PLATFORM),atari)
+FAT32_RO_OBJS += $(B)/atari/sdbank.o   # the reading trampolines, as they are
+endif
 $(B)/fat32ro_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 	@mkdir -p $(B)
 	$(CA65) -t none --cpu 6502 -D VERA_BASE=$(FAT32_VERA_BASE) $(FAT32_PETSCII) $(FAT32_BANK) -D FAT32_READONLY=1 \
@@ -138,7 +141,7 @@ all:
 one: lib test disk
 
 lib: $(LIBVERA_LIB) $(LIBVERA_LZS) $(if $(filter cx16,$(PLATFORM)),,$(LIBVERA_SD_LIB)) \
-     $(if $(filter c64 apple2,$(PLATFORM)),$(LIBVERA_SDRO_LIB)) \
+     $(if $(filter cx16,$(PLATFORM)),,$(LIBVERA_SDRO_LIB)) \
      $(if $(filter atari,$(PLATFORM)),$(LIBVERA_DSK_LIB)) $(LIBVERA_RMT8_LIB)
 
 $(LIBVERA_LIB): $(OBJS)

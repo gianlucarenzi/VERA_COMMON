@@ -4,7 +4,9 @@
  *
  * Build: make PLATFORM=<host> test-sdwrite; run it with a FAT32 image as the
  * card (tests/gen_test_image.py), then look at the image on the PC:
- *   mdir -i <img> ::  ->  WTEST2.BIN (1000 bytes), WDIR, no WTEST.BIN, no GONE.BIN
+ *   mdir -i <img> ::  ->  WTEST2.BIN (1000 bytes), WDIR, no WTEST.BIN, no GONE.BIN;
+ *   LongerName.text and a+b.c with mangled short names (LOxxxx~1.TEX,
+ *   A_xxxx~1.C), the 8.3 ones as they are (WTEST2.BIN, WDIR)
  *   the bytes of WTEST2.BIN: i * 7 + (i >> 8) for i = 0..999
  * The last line on the screen is "SDWRITE OK" or "SDWRITE FAIL <step> <errno>".
  */
@@ -62,6 +64,13 @@ int main(void)
     sd_delete("wtest2.bin");
     if (!sd_rename("wtest.bin", "wtest2.bin")) fail("rename");
     if (!sd_mkdir("wdir")) fail("mkdir");
+    /* names that are not 8.3: a mangled short name, the long one kept */
+    sd_delete("LongerName.text");
+    sd_delete("a+b.c");
+    if (!sd_create("LongerName.text", 1)) fail("long");
+    if (!sd_close()) fail("close3");
+    if (!sd_create("a+b.c", 1)) fail("plus");
+    if (!sd_close()) fail("close4");
     printf("SDWRITE OK\n");
     for (;;)
         ;
