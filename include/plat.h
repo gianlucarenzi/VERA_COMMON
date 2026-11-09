@@ -33,6 +33,14 @@
 
 unsigned char plat_joy(void);
 
+/* plat_rtc(): the date and time of an RTC adapter, if the host has one:
+ * Atari the ICD R-Time 8 cartridge ($D5B8), C64 a DS1307 on the user port
+ * (SDA PB0, SCL PB1), X16 the clock on the board (KERNAL); Apple II none
+ * yet.  1 = t set; 0 = no adapter (t not touched).  struct sd_time: sdfs.h
+ * (year, month, day, hour, minute, second). */
+struct sd_time;
+unsigned char __fastcall__ plat_rtc(struct sd_time *t);
+
 #if defined(__APPLE2__)
 /* Apple IIe: 1 = plat_joy reads the analog joystick too (~2100 cycles a
  * call, mostly waiting for its timers); 0 (default) = keyboard and buttons.

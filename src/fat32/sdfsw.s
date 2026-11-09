@@ -13,6 +13,7 @@
 .import fat32_create, fat32_write, fat32_delete, fat32_rename
 .import fat32_mkdir, fat32_rmdir, fat32_size
 .import sd_set_name, sd_name_buf, sd_ret_carry
+.import sd_time_fat                 ; src/common/sdtime.s: the time of the entry
 .import popax
 
 .ifdef FAT32_BANKED
@@ -42,6 +43,7 @@ FAT32_CODE
 ;-----------------------------------------------------------------------------
 _sd_create:
 	sta ret_tmp                     ; overwrite
+	jsr sd_time_fat
 	jsr popax
 	jsr sd_set_name
 	lda ret_tmp
@@ -94,6 +96,13 @@ _sd_delete:
 	jmp sd_ret_carry
 
 _sd_mkdir:
+	pha                             ; the path
+	txa
+	pha
+	jsr sd_time_fat
+	pla
+	tax
+	pla
 	jsr sd_set_name
 	jsr fat32_mkdir
 	jmp sd_ret_carry

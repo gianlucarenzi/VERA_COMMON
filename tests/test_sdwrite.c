@@ -6,7 +6,9 @@
  * card (tests/gen_test_image.py), then look at the image on the PC:
  *   mdir -i <img> ::  ->  WTEST2.BIN (1000 bytes), WDIR, no WTEST.BIN, no GONE.BIN;
  *   LongerName.text and a+b.c with mangled short names (LOxxxx~1.TEX,
- *   A_xxxx~1.C), the 8.3 ones as they are (WTEST2.BIN, WDIR)
+ *   A_xxxx~1.C), the 8.3 ones as they are (WTEST2.BIN, WDIR); their date
+ *   the one of the RTC adapter ("time rtc ..." on the screen), else
+ *   2001-02-03 04:05 (sd_set_time)
  *   the bytes of WTEST2.BIN: i * 7 + (i >> 8) for i = 0..999
  * The last line on the screen is "SDWRITE OK" or "SDWRITE FAIL <step> <errno>".
  */
@@ -34,6 +36,16 @@ int main(void)
     for (i = 0; i < N; ++i) out[i] = (unsigned char)(i * 7 + (i >> 8));
 
     if (!sd_mount()) fail("mount");
+
+    /* the time of the files: the RTC adapter if there is one, else this */
+    {
+        static struct sd_time t = { 2001, 2, 3, 4, 5, 6 };
+        unsigned char rtc;
+        sd_set_time(&t);
+        rtc = sd_get_time(&t);
+        printf("time %s %u-%02u-%02u %02u:%02u:%02u\n", rtc ? "rtc" : "set",
+               t.year, t.month, t.day, t.hour, t.minute, t.second);
+    }
 
     /* a file in two writes, across a sector */
     if (!sd_create("wtest.bin", 1)) fail("create");

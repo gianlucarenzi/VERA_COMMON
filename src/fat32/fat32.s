@@ -213,6 +213,7 @@ _fat32_bss_end:
 .export sync_sector_buffer
 .ifndef FAT32_READONLY
 .export fat32_set_time
+.export fat32_time_year             ; (libvera: sdtime.s, then month, day, hours, minutes, seconds)
 .endif
 .export fat32_get_size
 .export fat32_get_lba
@@ -2867,6 +2868,9 @@ create_dir_entry:
 	cpy #32
 	bne @3
 
+	; (libvera) its date and time
+	jsr put_timestamp
+
 	; Save lba + fat32_bufptr
 	set32 cur_context + context::dirent_lba,    cur_context + context::lba
 	set16 cur_context + context::dirent_bufptr, fat32_bufptr
@@ -3065,7 +3069,31 @@ fat32_close:
 	lda cur_context + context::file_size + 3
 	sta (fat32_bufptr), y
 
-	; Encode mtime timestamp
+	; Encode mtime timestamp (and the creation date if empty)
+	jsr put_timestamp
+
+	; Write directory sector
+	jsr save_sector_buffer
+	bcs :+
+	jmp error_clear_context         ; (libvera: put_timestamp in between)
+:
+.endif
+@done:
+	clear_bytes cur_context, .sizeof(context)
+
+	sec
+	rts
+
+.ifndef FAT32_READONLY
+;-----------------------------------------------------------------------------
+; put_timestamp
+;
+; (libvera) The modification time (fat32_time_*, none if the year is $FF)
+; into the entry at fat32_bufptr, and the creation time if it has none: from
+; fat32_close (as the X16) and create_dir_entry (a new entry has its date
+; from the start, also a directory or a file never written)
+;-----------------------------------------------------------------------------
+put_timestamp:
 @ts1:	lda fat32_time_year
 	inca
 	bne @ts3
@@ -3155,16 +3183,8 @@ fat32_close:
 	ldy #$11
 	sta (fat32_bufptr), y
 @ts4:
-
-	; Write directory sector
-	jsr save_sector_buffer
-	bcc error_clear_context
-.endif
-@done:
-	clear_bytes cur_context, .sizeof(context)
-
-	sec
 	rts
+.endif
 
 ;-----------------------------------------------------------------------------
 ; error_clear_context

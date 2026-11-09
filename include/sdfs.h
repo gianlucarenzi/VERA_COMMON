@@ -78,6 +78,19 @@ unsigned char __fastcall__ sd_write(const void *src, unsigned n);
  * vram_seek) to the file open to write; 1 = all written. */
 unsigned char __fastcall__ sd_write_vram(unsigned n);
 
+/* The date and time of the files and directories made from now on.  An
+ * RTC adapter comes first when there is one (plat_rtc, plat.h: the R-Time 8
+ * on the Atari, a DS1307 on the C64's user port, the X16's own clock); else
+ * the time set here; else 1980-01-01 00:00:00, the first date FAT has.
+ * year 1980-2107, month 1-12, day 1-31, hour 0-23. */
+struct sd_time {
+    unsigned int  year;
+    unsigned char month, day, hour, minute, second;
+};
+void __fastcall__ sd_set_time(const struct sd_time *t);
+/* The time the next file gets; 1 = from an RTC adapter. */
+unsigned char __fastcall__ sd_get_time(struct sd_time *t);
+
 /* Delete a file, rename (or move) a file or directory, make a directory,
  * remove an empty one; 1 = ok.  No file may be open. */
 unsigned char __fastcall__ sd_delete(const char *path);
