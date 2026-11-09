@@ -3,7 +3,8 @@
 ;
 ; Every file or directory made (sd_create, sd_mkdir: src/fat32/sdfsw.s)
 ; gets, in this order: the time of an RTC adapter (plat_rtc: the R-Time 8 on
-; the Atari, a DS1307 on the C64's user port, the X16's own clock), else the
+; the Atari, a DS1307 on the C64's user port, the X16's own clock, a No-Slot
+; Clock on the Apple IIe), else the
 ; one the program set with sd_set_time, else 1980-01-01 00:00:00, the first
 ; date FAT has.  In the main RAM: the Atari's FAT32 code calls it from its
 ; RAMbo bank.
