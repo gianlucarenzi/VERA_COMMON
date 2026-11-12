@@ -26,7 +26,17 @@
 
     .constructor plat_startup, 30
 
-KBD         = $C000                     ; bit 7 = a key was typed, bits 6-0 its code
+    .include "vera.inc"
+
+; VERA Module RBL-A2 (Vera-Module-RBL-A2, A2-SLINKY.md): VERA + a Slinky RAM
+; disk in one slot.  After a reset its $Cn00-$CnFF show the ProDOS slot ROM;
+; $C0nF bit 0 = 1 puts the VERA registers over $Cn00-$Cn1F.  The ROM's
+; identification at $CnF0 stays visible either way.
+RBL_ID      = VERA_BASE + $F0           ; "VERAS": VERA, card type 'S'
+RBL_MAP     = $C08F + ((VERA_BASE >> 4) & $70)  ; $C0nF of the VERA's slot
+RBL_VERA_ON = $01
+
+KBD        = $C000                     ; bit 7 = a key was typed, bits 6-0 its code
 KBDSTRB     = $C010                     ; read: bit 7 = a key is down now (IIe)
 BUTN0       = $C061                     ; Open Apple / button 0, bit 7
 BUTN1       = $C062                     ; Closed Apple / button 1, bit 7
@@ -58,15 +68,28 @@ _plat_joy_analog:   .byte 0             ; 1 = read the analog joystick too
 
     .segment "ONCE"
 
-; until vera_irq takes $03FE, an IRQ or BRK just returns; the Apple II
-; leaves the reset with IRQs masked (the other hosts' OS unmasks them)
+; the RBL-A2 shows its VERA (reads only on any other card); until vera_irq
+; takes $03FE, an IRQ or BRK just returns; the Apple II leaves the reset with
+; IRQs masked (the other hosts' OS unmasks them)
 plat_startup:
+    ldx #4
+@id:
+    lda RBL_ID,x
+    cmp rbl_sig,x
+    bne @no_rbl
+    dex
+    bpl @id
+    lda #RBL_VERA_ON
+    sta RBL_MAP                         ; STA absolute: no NMOS dummy read
+@no_rbl:
     lda #<irq_none
     sta USER_IRQ
     lda #>irq_none
     sta USER_IRQ+1
     cli
     rts
+
+rbl_sig:    .byte $56, $45, $52, $41, $53   ; "VERAS" in ASCII (no charmap)
 
     .segment "CODE"
 

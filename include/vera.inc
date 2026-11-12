@@ -14,7 +14,9 @@
 ;   X16    $9F20
 ;   Apple II  $C400 (A2VERA in slot 4), -D VERA_BASE=$Cn00 for slot n
 ;          (1, 2, 4, 5, 7: slot 6 is the Disk II, $C3xx belongs to the IIe
-;          80-column firmware unless SLOTC3ROM is on)
+;          80-column firmware unless SLOTC3ROM is on).  The VERA Module
+;          RBL-A2 shows its ProDOS slot ROM there after a reset: plat_apple2.s
+;          puts the VERA back ($C0nF bit 0 = 1) when it finds "VERAS" at $CnF0
 ; ca65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
 ; __CX16__ / __APPLE2__.
 

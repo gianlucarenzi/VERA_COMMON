@@ -7,6 +7,7 @@
  *          -DVERA_BASE=0xDE00u (IO1, no GeoRAM)
  *   X16    $9F20
  *   Apple II  $C400: the A2VERA card in slot 4; -DVERA_BASE=0xCn00u for slot n
+ *          (or the VERA Module RBL-A2, whose VERA plat_apple2.s maps in at start-up)
  * cc65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
  * __CX16__ / __APPLE2__.
  */
