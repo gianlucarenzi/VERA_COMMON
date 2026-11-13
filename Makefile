@@ -32,6 +32,12 @@ ATARI800 ?= atari800
 VICE     ?= x64sc
 X16EMU   ?= x16emu
 A2EMU    ?= a2emu
+# the VERA picture in the emulator forks (VICE -verarenderer, atari800
+# -verax16-renderer, a2emu A2_VERA_RENDERER): exact = every line of every
+# frame as the chip draws it, fast = lines kept until what they show changes,
+# auto (default) = exact while it costs at most half a frame and the emulator
+# keeps up with real time, else fast (x16emu always draws exactly)
+VERA_RENDERER ?= auto
 A2FS     ?= a2fs
 # a2emu: unenhanced IIe (6502), the A2VERA card's slot from VERA_BASE ($Cn00)
 A2_MODEL ?= iie
@@ -280,11 +286,11 @@ disk: $(DISK)
 
 run-atari:
 	$(MAKE) PLATFORM=atari one
-	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -windowed -win-width 384 -win-height 240 vera-atari.atr
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-renderer $(VERA_RENDERER) -windowed -win-width 384 -win-height 240 vera-atari.atr
 
 run-c64:
 	$(MAKE) PLATFORM=c64 one
-	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDF00) +VICIIdsize -windowwidth 400 -windowheight 300 \
+	$(VICE) -vera -verabase $(or $(VERA_BASE),0xDF00) -verarenderer $(VERA_RENDERER) +VICIIdsize -windowwidth 400 -windowheight 300 \
 	    +drive8truedrive -trapdevice8 -autostart vera-c64.d64
 
 run-x16:
@@ -293,7 +299,7 @@ run-x16:
 
 run-apple2:
 	$(MAKE) PLATFORM=apple2 one
-	A2_MODEL=$(A2_MODEL) A2_VERA_SLOT=$(A2_SLOT) A2_SDCARD=$(abspath vera-apple2-sd.img) \
+	A2_MODEL=$(A2_MODEL) A2_VERA_SLOT=$(A2_SLOT) A2_VERA_RENDERER=$(VERA_RENDERER) A2_SDCARD=$(abspath vera-apple2-sd.img) \
 	    $(A2EMU) $(abspath vera-apple2.dsk)
 
 # --- FAT32 SD test -----------------------------------------------------------
@@ -360,17 +366,17 @@ $(B)/test_rastan_sd.o: tests/test_rastan_sd.c $(HEADERS)
 
 run-test-sdfs: PLATFORM ?= atari
 run-test-sdfs: test-sdfs $(SD_IMG)
-	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-renderer $(VERA_RENDERER) -verax16-sdcard $(SD_IMG) \
 	    -windowed -win-width 384 -win-height 240 build/atari/test_sdfs.xex
 
 run-test-sdfs-minimal: PLATFORM ?= atari
 run-test-sdfs-minimal: $(B)/test_sdfs_minimal.$(EXE) $(SD_IMG)
-	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-renderer $(VERA_RENDERER) -verax16-sdcard $(SD_IMG) \
 	    -windowed -win-width 384 -win-height 240 build/atari/test_sdfs_minimal.xex
 
 run-test-rastan-sd: PLATFORM ?= atari
 run-test-rastan-sd: $(B)/test_rastan_sd.$(EXE) $(SD_IMG)
-	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-sdcard $(SD_IMG) \
+	$(ATARI800) -xl -verax16 -verax16-rom $(VERA_ROM) -verax16-renderer $(VERA_RENDERER) -verax16-sdcard $(SD_IMG) \
 	    -windowed -win-width 384 -win-height 240 build/atari/test_rastan_sd.xex
 
 clean:
