@@ -18,7 +18,8 @@
 # Apple II: the A2VERA card in slot 4, $C400 (a2emu A2_VERA_SLOT=4);
 # VERA_BASE=0xCn00 for slot n (rebuild the library with it too).  The VERA
 # Module RBL-A2 (VERA + Slinky RAM disk, ProDOS ROM at $Cn00 after a reset)
-# works too: the start-up code maps its VERA in (a2emu A2_VERA_CARD=rbl).
+# works too: the start-up code maps its VERA in (a2emu A2_VERA_CARD=rbl);
+# its 256 KB through slinky.h (docs/APPLE2.md).
 
 PLATFORM ?= atari
 ifeq ($(filter atari c64 cx16 apple2,$(PLATFORM)),)

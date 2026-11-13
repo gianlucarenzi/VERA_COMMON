@@ -67,6 +67,8 @@ AS_SRC += src/c64/rmtsid.s src/c64/rmtsds.s
 HOST_OBJS = $(B)/sidtab.o
 else ifeq ($(PLATFORM),cx16)
 AS_SRC += src/cx16/macptr.s
+else ifeq ($(PLATFORM),apple2)
+AS_SRC += src/apple2/slinky.s
 endif
 OBJS    = $(patsubst src/%.c,$(B)/%.o,$(C_SRC)) $(patsubst src/%.s,$(B)/%.o,$(AS_SRC)) \
           $(B)/psgtab.o $(HOST_OBJS)
@@ -131,7 +133,7 @@ $(B)/fat32_%.o: src/fat32/%.s $(wildcard src/fat32/*.inc)
 HEADERS = $(wildcard include/*.h)
 ASINC   = include/vera.inc include/plat.inc src/rmt/rmt_feat.inc
 
-.PHONY: all one lib test test-sdwrite disk run-atari run-c64 run-x16 run-apple2 clean prof-pcm prof-sfx
+.PHONY: all one lib test test-sdwrite test-slinky disk run-atari run-c64 run-x16 run-apple2 clean prof-pcm prof-sfx
 
 all:
 	$(MAKE) PLATFORM=atari one
@@ -329,6 +331,18 @@ $(B)/test_rastan_sd.$(EXE): $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB) $
 	    $(B)/test_rastan_sd.o $(FAT32_OBJS) $(LIBVERA_LIB)
 
 # writing on the card (sdfs.h: create, write, delete, rename, mkdir):
+# tests/test_slinky.c (Apple II): the Slinky driver on a2run's RBL-A2 or
+# RAM card, a boot floppy (no SD needed)
+test-slinky: $(B)/slinky.dsk
+$(B)/slinky.dsk: $(B)/test_slinky.$(EXE)
+	$(A2FS) mkimage $@ $< --himem 0xBF00
+$(B)/test_slinky.$(EXE): $(B)/test_slinky.o $(LIBVERA_LIB) $(LIBVERA_CFG)
+	$(CL65) -t $(PLATFORM) $(LIBVERA_LDFLAGS) -m $(B)/test_slinky.map -o $@ \
+	    $(B)/test_slinky.o $(LIBVERA_LIB)
+$(B)/test_slinky.o: tests/test_slinky.c $(HEADERS)
+	$(CC65) $(CFLAGS) -o $(B)/test_slinky.s $<
+	$(CA65) $(LIBVERA_ASFLAGS) -o $@ $(B)/test_slinky.s
+
 # tests/test_sdwrite.c, the image looked at afterwards (its header)
 test-sdwrite: $(B)/test_sdwrite.$(EXE)
 $(B)/test_sdwrite.$(EXE): LIBVERA_RAMBO = 1

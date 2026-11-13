@@ -18,6 +18,8 @@
  * Apple IIe: the 40-column text page 1 is the second screen.  cc65 conio
  * switches the ROM in for a moment (VTABZ): the language card RAM ($D000-,
  * cfg/apple2.cfg LCCODE/LCRODATA, read only) must not be in use then.
+ * VERA cards (A2VERA, VERA Module RBL-A2) and the Slinky RAM (slinky.h):
+ * docs/APPLE2.md.
  */
 
 /* plat_joy(): the joystick, active high (Atari stick 0, C64 port 2, X16
