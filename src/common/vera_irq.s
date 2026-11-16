@@ -338,7 +338,9 @@ _vera_frame_wait:
     rts
 
 ; ----------------------------------------------------------------------------
-; unsigned vera_scanline(void) - the VERA line being drawn (0-524).  Bits 7:0
+; unsigned vera_scanline(void) - SCANLINE: the line being sent to the screen,
+; 0-479 visible, counting on to 511; lines 512-524 read 511 ($1FF, 9 bits).
+; Interlaced: even values in the even field, odd in the odd one.  Bits 7:0
 ; (SCANLINE_L) and bit 8 (IEN bit 6) are two reads: the low byte is read again
 ; and the pair taken again when the line changed between them (255 -> 256
 ; would otherwise read 511).  CTRL is not touched.
@@ -359,7 +361,8 @@ _vera_scanline:
 ; ----------------------------------------------------------------------------
 ; unsigned __fastcall__ vera_lines_since(unsigned start) - VERA lines from
 ; line start (vera_scanline()) to now, 0-524: the time of a piece of work
-; (525 lines a frame)
+; (525 lines a frame; lines 512-524 all read 511, so a span that starts or
+; ends there is up to 13 lines short)
 ; ----------------------------------------------------------------------------
 _vera_lines_since:
     sta tmp
