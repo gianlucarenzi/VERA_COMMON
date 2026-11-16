@@ -47,13 +47,24 @@ find_win() {			# $1 = name regexp, $2 = tries of 0.1 s
 main=$(find_win "$name")
 vera=$(find_win 'VERA' 20)	# the X16 has none
 if [ -n "$main" ]; then
-	wmctrl -i -r "$main" -e 0,$mx,$((my + 24)),-1,-1
-	wmctrl -i -r "$main" -b add,above
+	# Try wmctrl first (works for most emulators)
+	if wmctrl -i -r "$main" -e 0,$mx,$((my + 24)),-1,-1 2>/dev/null; then
+		wmctrl -i -r "$main" -b add,above 2>/dev/null
+	else
+		# Fallback: xdotool (for SDL apps like a2emu)
+		xdotool search --name "$(echo "$name" | sed 's/^/^/; s/$/.*$/')" --exec \
+			xdotool windowmove {} $mx $((my + 24)) 2>/dev/null
+	fi
 fi
 if [ -n "$vera" ]; then
 	# VERA 640x480 at the bottom-right, above the bottom panel (24 px)
-	wmctrl -i -r "$vera" -e 0,$((mx + sw - 640)),$((my + sh - 24 - 480 - 30)),-1,-1
-	wmctrl -i -r "$vera" -b add,above
+	if wmctrl -i -r "$vera" -e 0,$((mx + sw - 640)),$((my + sh - 24 - 480 - 30)),-1,-1 2>/dev/null; then
+		wmctrl -i -r "$vera" -b add,above 2>/dev/null
+	else
+		# Fallback: xdotool
+		xdotool search --name "VERA" --exec \
+			xdotool windowmove {} $((mx + sw - 640)) $((my + sh - 24 - 480 - 30)) 2>/dev/null
+	fi
 fi
 [ -n "$main" ] && xdotool windowactivate --sync "$(printf %d "$main")" 2>/dev/null
 
