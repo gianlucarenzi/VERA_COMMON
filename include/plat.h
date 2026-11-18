@@ -3,7 +3,7 @@
 
 /*
  * plat.h - the host differences seen by C code (src/atari, src/c64,
- * src/cx16).
+ * src/cx16, src/pc).
  *
  * The VERA is the same chip on every host: the game sees only this small
  * interface for what is not the VERA.
@@ -34,6 +34,10 @@
 #define PAD_FIRE   0x10
 
 unsigned char plat_joy(void);
+#if defined(__PC__)
+unsigned char plat_key_hit(void);
+unsigned char plat_key_get(void);
+#endif
 
 /* plat_rtc(): the date and time of an RTC adapter, if the host has one:
  * Atari the ICD R-Time 8 cartridge ($D5B8), C64 a DS1307 on the user port
@@ -73,6 +77,9 @@ unsigned char os_ram(void);
 #if defined(__ATARI__)
 #define PLAT_KEY_EXIT  0x1B             /* ESC */
 #define PLAT_NAME      "Atari XL/XE"
+#elif defined(__PC__)
+#define PLAT_KEY_EXIT  0x1B
+#define PLAT_NAME      "PC / SDL2"
 #elif defined(__CX16__)
 #define PLAT_KEY_EXIT  0x03             /* RUN/STOP */
 #define PLAT_NAME      "Commander X16"

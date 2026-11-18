@@ -19,7 +19,12 @@
 # a2fs (Apple: a2emu-vera's make install), mkfs.fat + mtools (microSD images).
 
 VERA_COMMON := $(abspath .)
+PLATFORM ?= atari
 include mk/libvera.mk
+
+ifeq ($(PLATFORM),pc)
+include Makefile.pc
+else
 
 CC65     ?= cc65
 CA65     ?= ca65
@@ -396,3 +401,5 @@ prof-sfx:
 	$(PYTHON) tools/psgsfx.py tests/sfx_test.py build/sim/sfx_test.s
 	$(CL65) $(SIM_FLAGS) -o build/sim/prof_sfx tests/prof_sfx.c src/common/sfx.s tests/sim_sfx_stub.s build/sim/sfx_test.s
 	sim65 build/sim/prof_sfx
+
+endif

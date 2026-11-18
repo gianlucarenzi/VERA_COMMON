@@ -9,12 +9,18 @@
  *   Apple II  $C400: the A2VERA card in slot 4; -DVERA_BASE=0xCn00u for slot n
  *          (or the VERA Module RBL-A2, whose VERA plat_apple2.s maps in at start-up)
  * cc65 -t atari / -t c64 / -t cx16 / -t apple2 defines __ATARI__ / __C64__ /
- * __CX16__ / __APPLE2__.
+ * __CX16__ / __APPLE2__. The native SDL2 backend defines __PC__.
  */
 
 #ifndef VERA_H
 #define VERA_H
 
+#if defined(__PC__)
+extern volatile unsigned char vera_pc_registers[0x20];
+#define VERA_REG(n)     vera_pc_registers[n]
+volatile unsigned char *vera_pc_data0(void);
+volatile unsigned char *vera_pc_data1(void);
+#else
 #ifndef VERA_BASE
 #if defined(__ATARI__)
 #define VERA_BASE 0xD100u
@@ -30,12 +36,18 @@
 #endif
 
 #define VERA_REG(n)     (*(volatile unsigned char *)(VERA_BASE + (n)))
+#endif
 
 #define VERA_ADDR_L     VERA_REG(0x00)
 #define VERA_ADDR_M     VERA_REG(0x01)
 #define VERA_ADDR_H     VERA_REG(0x02)
+#if defined(__PC__)
+#define VERA_DATA0      (*vera_pc_data0())
+#define VERA_DATA1      (*vera_pc_data1())
+#else
 #define VERA_DATA0      VERA_REG(0x03)
 #define VERA_DATA1      VERA_REG(0x04)
+#endif
 #define VERA_CTRL       VERA_REG(0x05)
 #define VERA_IEN        VERA_REG(0x06)
 #define VERA_ISR        VERA_REG(0x07)

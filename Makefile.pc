@@ -1,0 +1,29 @@
+PC_CC ?= cc
+PC_AR ?= ar
+PC_CFLAGS ?= -O2 -std=c99 -Wall -Wextra -D__PC__ -D__fastcall__= -I include
+PC_CFLAGS += $(shell pkg-config --cflags sdl2)
+PC_LDLIBS = $(shell pkg-config --libs sdl2)
+PC_OBJ = $(LIBVERA_DIR)/vera_pc.o $(LIBVERA_DIR)/asset_pc.o
+
+.PHONY: all lib test clean
+all: lib
+
+lib: $(LIBVERA_LIB)
+
+$(LIBVERA_DIR):
+	mkdir -p $@
+
+$(LIBVERA_DIR)/%.o: src/pc/%.c | $(LIBVERA_DIR)
+	$(PC_CC) $(PC_CFLAGS) -c -o $@ $<
+
+$(LIBVERA_LIB): $(PC_OBJ)
+	$(PC_AR) rcs $@ $^
+
+test: $(LIBVERA_DIR)/test_pc
+	SDL_VIDEODRIVER=dummy $<
+
+$(LIBVERA_DIR)/test_pc: tests/test_pc.c $(LIBVERA_LIB)
+	$(PC_CC) $(PC_CFLAGS) -o $@ $< $(LIBVERA_LIB) $(PC_LDLIBS)
+
+clean:
+	rm -rf $(LIBVERA_DIR)

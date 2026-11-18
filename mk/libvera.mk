@@ -22,10 +22,17 @@
 # its 256 KB through slinky.h (docs/APPLE2.md).
 
 PLATFORM ?= atari
-ifeq ($(filter atari c64 cx16 apple2,$(PLATFORM)),)
-$(error PLATFORM must be atari, c64, cx16 or apple2, not '$(PLATFORM)')
+ifeq ($(filter atari c64 cx16 apple2 pc,$(PLATFORM)),)
+$(error PLATFORM must be atari, c64, cx16, apple2 or pc, not '$(PLATFORM)')
 endif
 
+ifeq ($(PLATFORM),pc)
+LIBVERA_DIR     = $(VERA_COMMON)/build/pc
+LIBVERA_LIB     = $(LIBVERA_DIR)/libvera.a
+LIBVERA_CFLAGS  = -D__PC__ -I $(VERA_COMMON)/include $(shell pkg-config --cflags sdl2)
+LIBVERA_ASFLAGS =
+LIBVERA_LDFLAGS = $(shell pkg-config --libs sdl2)
+else
 ifeq ($(PLATFORM),c64)
 VERA_BASE ?= 0xDF00
 C64_CARD_SEL ?= 1
@@ -73,4 +80,5 @@ else ifeq ($(PLATFORM),apple2)
 EXE = bin
 else
 EXE = prg
+endif
 endif
