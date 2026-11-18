@@ -235,6 +235,48 @@ void vera_irq_set_callback(void (*callback)(void))
     frame_callback = callback;
 }
 
+/* debug, headless runs: VERA_PC_KEYS="frame:key,..." queues a key at a
+   frame (a character, or a decimal code), VERA_PC_JOY="frame:mask,..." sets
+   the joystick (PAD_* bits, decimal) from a frame on */
+static void script_input(void)
+{
+    static unsigned long frame;
+    static const char *keys, *joy;
+    static int init;
+    const char *p;
+    if (!init)
+    {
+        init = 1;
+        keys = getenv("VERA_PC_KEYS");
+        joy = getenv("VERA_PC_JOY");
+    }
+    ++frame;
+    for (p = keys; p && *p;)
+    {
+        char *e;
+        unsigned long f = strtoul(p, &e, 10);
+        if (*e != ':')
+            break;
+        ++e;
+        if (f == frame)
+            queue_key(e[0] >= '0' && e[0] <= '9' && e[1] && e[1] != ',' ? (unsigned char)strtoul(e, NULL, 10)
+                                                                        : (unsigned char)e[0]);
+        p = strchr(e, ',');
+        p = p ? p + 1 : NULL;
+    }
+    for (p = joy; p && *p;)
+    {
+        char *e;
+        unsigned long f = strtoul(p, &e, 10);
+        if (*e != ':')
+            break;
+        if (f == frame)
+            key_state = (unsigned char)strtoul(e + 1, NULL, 10);
+        p = strchr(e, ',');
+        p = p ? p + 1 : NULL;
+    }
+}
+
 static void sdl_open(void);
 
 void vera_frame_init(void)
@@ -335,6 +377,7 @@ unsigned char vera_frame_wait(void)
         SDL_Delay(17u - delay);
     last_frame = SDL_GetTicks();
     ++vera_irq_count[0];
+    script_input();
     if (frame_callback)
         frame_callback();
     present();
