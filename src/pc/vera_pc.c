@@ -277,6 +277,8 @@ static void script_input(void)
     }
 }
 
+void vera_pc_audio_open(void);
+void vera_pc_audio_frame(void);
 static void sdl_open(void);
 
 void vera_frame_init(void)
@@ -332,6 +334,7 @@ static void sdl_open(void)
             exit(EXIT_FAILURE);
         }
     }
+    vera_pc_audio_open();
     last_frame = SDL_GetTicks();
 }
 
@@ -378,6 +381,7 @@ unsigned char vera_frame_wait(void)
     last_frame = SDL_GetTicks();
     ++vera_irq_count[0];
     script_input();
+    vera_pc_audio_frame();
     if (frame_callback)
         frame_callback();
     present();
@@ -517,33 +521,6 @@ void vram_copy(unsigned n)
         vaddr[1] = (vaddr[1] + increment(1)) & 0x1ffffu;
     }
     regs0();
-}
-
-void sfx_init(const void *bank)
-{
-    (void)bank;
-}
-void sfx_play(unsigned char id)
-{
-    (void)id;
-}
-void sfx_stop(void)
-{
-}
-unsigned char sfx_busy(void)
-{
-    return 0;
-}
-void pcm_play(const void *sound)
-{
-    (void)sound;
-}
-void pcm_stop(void)
-{
-}
-unsigned char pcm_busy(void)
-{
-    return 0;
 }
 
 /* bcd.s bcd_add: dst += src, nbytes BCD bytes, most significant first;

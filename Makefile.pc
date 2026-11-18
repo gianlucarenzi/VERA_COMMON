@@ -3,7 +3,7 @@ PC_AR ?= ar
 PC_CFLAGS ?= -O2 -std=gnu99 -Wall -Wextra -D__PC__ -D__fastcall__= -I include
 PC_CFLAGS += $(shell pkg-config --cflags sdl2)
 PC_LDLIBS = $(shell pkg-config --libs sdl2)
-PC_OBJ = $(LIBVERA_DIR)/vera_pc.o $(LIBVERA_DIR)/asset_pc.o
+PC_OBJ = $(LIBVERA_DIR)/vera_pc.o $(LIBVERA_DIR)/asset_pc.o $(LIBVERA_DIR)/audio_pc.o $(LIBVERA_DIR)/pcm_load.o
 
 .PHONY: all lib test clean
 all: lib
@@ -12,6 +12,9 @@ lib: $(LIBVERA_LIB)
 
 $(LIBVERA_DIR):
 	mkdir -p $@
+
+$(LIBVERA_DIR)/pcm_load.o: src/common/pcm_load.c | $(LIBVERA_DIR)
+	$(PC_CC) $(PC_CFLAGS) -c -o $@ $<
 
 $(LIBVERA_DIR)/%.o: src/pc/%.c | $(LIBVERA_DIR)
 	$(PC_CC) $(PC_CFLAGS) -c -o $@ $<
