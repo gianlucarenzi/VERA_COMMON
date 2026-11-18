@@ -1,0 +1,24 @@
+# C style (user 2026-11-18): Allman braces, 4 spaces, on the hand-written
+# .c / .h (not the generated ones).  clang-format rewrites the cc65 pragmas
+# (code-name -> code - name): run RastanRIP tools/cformat.py, which puts the
+# #pragma lines back (the 2026-11-18 reformat kept every build identical)
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+BreakBeforeBraces: Allman
+ColumnLimit: 0
+SortIncludes: false
+IncludeBlocks: Preserve
+ReflowComments: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+IndentCaseLabels: true
+PointerAlignment: Right
+AlignTrailingComments: true
+AlignConsecutiveMacros: false
+SpaceBeforeParens: ControlStatements

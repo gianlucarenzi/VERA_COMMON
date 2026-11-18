@@ -30,7 +30,8 @@ static unsigned char streaming;
 unsigned char __fastcall__ asset_open(const char *name)
 {
     asset_close();
-    if (!mounted) {
+    if (!mounted)
+    {
         if (!sd_mount())
             return 0;
         mounted = 1;
@@ -41,7 +42,8 @@ unsigned char __fastcall__ asset_open(const char *name)
 
 unsigned char asset_stream(void)
 {
-    if (is_open && !streaming && sd_stream_start()) {
+    if (is_open && !streaming && sd_stream_start())
+    {
         sd_stream_reset();
         streaming = 1;
     }
@@ -50,11 +52,13 @@ unsigned char asset_stream(void)
 
 void asset_close(void)
 {
-    if (streaming) {
+    if (streaming)
+    {
         sd_stream_stop();
         streaming = 0;
     }
-    if (is_open) {
+    if (is_open)
+    {
         sd_close();
         is_open = 0;
     }
@@ -68,11 +72,15 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
     unsigned char *p = (unsigned char *)dst;
     unsigned n0 = n;
 
-    if (streaming) {
+    if (streaming)
+    {
         if (n && sd_stream_read(dst, n) != n)
             return 0;
-    } else {
-        while (n) {
+    }
+    else
+    {
+        while (n)
+        {
             got = sd_read(p, n);
             if (got == 0)
                 return 0;
@@ -89,7 +97,8 @@ unsigned char __fastcall__ asset_skip(unsigned long n)
 {
     unsigned chunk;
 
-    while (n) {
+    while (n)
+    {
         chunk = n > ASSET_BUF_SIZE ? ASSET_BUF_SIZE : (unsigned)n;
         if (!asset_read(asset_buf, chunk))
             return 0;
@@ -104,7 +113,8 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
 
     /* straight from the sector buffer to DATA0, no bounce buffer; an IRQ
      * callback that uses the data ports restores them (vera_irq.h) */
-    while (n) {
+    while (n)
+    {
         /* smaller pieces while a loading bar follows them */
         chunk = asset_progress ? 0x800 : 0x4000;
         if (n < chunk)

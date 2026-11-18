@@ -6,7 +6,7 @@
  */
 
 /* 'V' | 'X', the identifier of the card */
-#define VERA_CARD_ID  ((unsigned int)0x5658)
+#define VERA_CARD_ID ((unsigned int)0x5658)
 
 /*
  * Select DCSEL 63 (CTRL = $7E) and check the identity bytes: $09 = 'V',

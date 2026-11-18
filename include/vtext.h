@@ -15,14 +15,14 @@
  * PETSCII back into ASCII.
  */
 
-#define VT_40X30  4
-#define VT_80X30  8
-#define VT_80X60  6
+#define VT_40X30 4
+#define VT_80X30 8
+#define VT_80X60 6
 
-#define VT_MAP         0x1B000ul    /* tilemap, 256 bytes per row */
-#define VT_MAP_ROWS    64
-#define VT_FONT        0x1F000ul    /* 128 glyphs */
-#define VT_COLOR       0x61         /* bg 6 (blue), fg 1 (white) */
+#define VT_MAP 0x1B000ul /* tilemap, 256 bytes per row */
+#define VT_MAP_ROWS 64
+#define VT_FONT 0x1F000ul /* 128 glyphs */
+#define VT_COLOR 0x61     /* bg 6 (blue), fg 1 (white) */
 
 /* Set up layer 1 as text in mode VT_* (the other layers stay as they are),
  * load the font, clear the screen with vt_color. */

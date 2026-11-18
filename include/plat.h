@@ -27,11 +27,11 @@
  * the arrow keys or the joystick read at two thresholds, fire = space or
  * either Apple key / joystick button: a held arrow and space cannot both
  * be seen, the Apple keys can) */
-#define PAD_UP     0x01
-#define PAD_DOWN   0x02
-#define PAD_LEFT   0x04
-#define PAD_RIGHT  0x08
-#define PAD_FIRE   0x10
+#define PAD_UP 0x01
+#define PAD_DOWN 0x02
+#define PAD_LEFT 0x04
+#define PAD_RIGHT 0x08
+#define PAD_FIRE 0x10
 
 unsigned char plat_joy(void);
 #if defined(__PC__)
@@ -75,20 +75,20 @@ unsigned char os_ram(void);
 
 /* Key that leaves a program (cgetc() code) and the name of the host. */
 #if defined(__ATARI__)
-#define PLAT_KEY_EXIT  0x1B             /* ESC */
-#define PLAT_NAME      "Atari XL/XE"
+#define PLAT_KEY_EXIT 0x1B /* ESC */
+#define PLAT_NAME "Atari XL/XE"
 #elif defined(__PC__)
-#define PLAT_KEY_EXIT  0x1B
-#define PLAT_NAME      "PC / SDL2"
+#define PLAT_KEY_EXIT 0x1B
+#define PLAT_NAME "PC / SDL2"
 #elif defined(__CX16__)
-#define PLAT_KEY_EXIT  0x03             /* RUN/STOP */
-#define PLAT_NAME      "Commander X16"
+#define PLAT_KEY_EXIT 0x03 /* RUN/STOP */
+#define PLAT_NAME "Commander X16"
 #elif defined(__APPLE2__)
-#define PLAT_KEY_EXIT  0x1B             /* ESC */
-#define PLAT_NAME      "Apple IIe"
+#define PLAT_KEY_EXIT 0x1B /* ESC */
+#define PLAT_NAME "Apple IIe"
 #else
-#define PLAT_KEY_EXIT  0x03             /* RUN/STOP */
-#define PLAT_NAME      "C64"
+#define PLAT_KEY_EXIT 0x03 /* RUN/STOP */
+#define PLAT_NAME "C64"
 #endif
 
 #endif /* PLAT_H */

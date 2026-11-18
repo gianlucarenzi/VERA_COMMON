@@ -14,7 +14,7 @@ unsigned int vera_detect(void)
 {
     unsigned char v;
 
-    VERA_CTRL = 0x7E;                   /* DCSEL 63 */
+    VERA_CTRL = 0x7E; /* DCSEL 63 */
     v = VERA_REG09;
     vera_version[0] = VERA_REG0A;
     vera_version[1] = VERA_REG0B;
@@ -34,7 +34,8 @@ unsigned int vera_require(void)
 {
     unsigned int id = vera_detect();
 
-    if (!id) {
+    if (!id)
+    {
 #if defined(__ATARI__)
         cputs("VERA card not found at $D100.\r\n"
               "atari800 -verax16 -verax16-rom ...\r\n");

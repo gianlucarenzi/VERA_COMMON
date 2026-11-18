@@ -15,29 +15,30 @@
  */
 
 /* fat32_errno values */
-#define SD_OK               0
-#define SD_ERR_READ         1
-#define SD_ERR_WRITE        2
-#define SD_ERR_NAME         3
-#define SD_ERR_EXISTS       4
-#define SD_ERR_NOT_FOUND    5
-#define SD_ERR_READ_ONLY    6
-#define SD_ERR_NOT_EMPTY    7
-#define SD_ERR_NO_MEDIA     8
-#define SD_ERR_NO_FS        9
+#define SD_OK 0
+#define SD_ERR_READ 1
+#define SD_ERR_WRITE 2
+#define SD_ERR_NAME 3
+#define SD_ERR_EXISTS 4
+#define SD_ERR_NOT_FOUND 5
+#define SD_ERR_READ_ONLY 6
+#define SD_ERR_NOT_EMPTY 7
+#define SD_ERR_NO_MEDIA 8
+#define SD_ERR_NO_FS 9
 #define SD_ERR_INCONSISTENT 10
-#define SD_ERR_PROTECTED    11
-#define SD_ERR_RESOURCES    12
+#define SD_ERR_PROTECTED 11
+#define SD_ERR_RESOURCES 12
 
-#define SD_ATTR_DIR         0x10
+#define SD_ATTR_DIR 0x10
 
 /* the entry sd_readdir() decoded (the X16 struct dirent) */
-struct sd_dirent {
-    char          name[256];            /* ASCII, long name if there is one */
-    unsigned char attributes;           /* SD_ATTR_DIR, ... */
-    unsigned long start;                /* first cluster */
-    unsigned long size;                 /* bytes */
-    unsigned char mtime[6];             /* year - 1980, month, day, h, m, s */
+struct sd_dirent
+{
+    char name[256];           /* ASCII, long name if there is one */
+    unsigned char attributes; /* SD_ATTR_DIR, ... */
+    unsigned long start;      /* first cluster */
+    unsigned long size;       /* bytes */
+    unsigned char mtime[6];   /* year - 1980, month, day, h, m, s */
 };
 extern struct sd_dirent sd_dirent;
 
@@ -84,8 +85,9 @@ unsigned char __fastcall__ sd_write_vram(unsigned n);
  * No-Slot Clock on the Apple IIe); else
  * the time set here; else 1980-01-01 00:00:00, the first date FAT has.
  * year 1980-2107, month 1-12, day 1-31, hour 0-23. */
-struct sd_time {
-    unsigned int  year;
+struct sd_time
+{
+    unsigned int year;
     unsigned char month, day, hour, minute, second;
 };
 void __fastcall__ sd_set_time(const struct sd_time *t);

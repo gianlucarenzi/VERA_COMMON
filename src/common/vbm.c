@@ -13,40 +13,38 @@
 #include "asset.h"
 #include "vbm.h"
 
-#define HEADER_SIZE  12u
-#define NAME_MAX     40u            /* longer names are skipped, not shown */
+#define HEADER_SIZE 12u
+#define NAME_MAX 40u /* longer names are skipped, not shown */
 #define PALETTE_SIZE 512u
-#define PIXEL_SIZE   (320ul * 240ul)
-#define CHUNK        2048u          /* progress granularity */
+#define PIXEL_SIZE (320ul * 240ul)
+#define CHUNK 2048u /* progress granularity */
 
 static unsigned char saved_video, saved_hscale, saved_vscale;
 
 /* Commander X16 default palette, entries 0-15 */
 static const unsigned char default_palette16[32] = {
-    0x00,0x00, 0xFF,0x0F, 0x00,0x08, 0xFE,0x0A, 0x4C,0x0C, 0xC5,0x00, 0x0A,0x00, 0xE7,0x0E,
-    0x85,0x0D, 0x40,0x06, 0x77,0x0F, 0x33,0x03, 0x77,0x07, 0xF6,0x0A, 0x8F,0x00, 0xBB,0x0B
-};
+    0x00, 0x00, 0xFF, 0x0F, 0x00, 0x08, 0xFE, 0x0A, 0x4C, 0x0C, 0xC5, 0x00, 0x0A, 0x00, 0xE7, 0x0E,
+    0x85, 0x0D, 0x40, 0x06, 0x77, 0x0F, 0x33, 0x03, 0x77, 0x07, 0xF6, 0x0A, 0x8F, 0x00, 0xBB, 0x0B};
 
 void vbm_init(void)
 {
     VERA_CTRL = 0;
-    saved_video  = VERA_DC_VIDEO;
+    saved_video = VERA_DC_VIDEO;
     saved_hscale = VERA_DC_HSCALE;
     saved_vscale = VERA_DC_VSCALE;
 
-    VERA_L0_CONFIG   = 0x07;        /* bitmap, 8 bpp */
-    VERA_L0_TILEBASE = 0x00;        /* $00000, 320 wide */
-    VERA_L0_HSCR_H   = 0;           /* bitmap: palette offset 0 */
-    VERA_DC_HSCALE   = 0x40;        /* 320x240 -> 640x480 */
-    VERA_DC_VSCALE   = 0x40;
-    VERA_DC_VIDEO    = (unsigned char)(((saved_video & 3) ? saved_video : (saved_video | VERA_VIDEO_VGA))
-                                       | VERA_VIDEO_LAYER0);
+    VERA_L0_CONFIG = 0x07;   /* bitmap, 8 bpp */
+    VERA_L0_TILEBASE = 0x00; /* $00000, 320 wide */
+    VERA_L0_HSCR_H = 0;      /* bitmap: palette offset 0 */
+    VERA_DC_HSCALE = 0x40;   /* 320x240 -> 640x480 */
+    VERA_DC_VSCALE = 0x40;
+    VERA_DC_VIDEO = (unsigned char)(((saved_video & 3) ? saved_video : (saved_video | VERA_VIDEO_VGA)) | VERA_VIDEO_LAYER0);
 }
 
 void vbm_done(void)
 {
     VERA_CTRL = 0;
-    VERA_DC_VIDEO  = saved_video;
+    VERA_DC_VIDEO = saved_video;
     VERA_DC_HSCALE = saved_hscale;
     VERA_DC_VSCALE = saved_vscale;
     vera_palette(0, default_palette16, 16);
@@ -57,22 +55,28 @@ static unsigned char stream(unsigned long n, unsigned long *loaded, unsigned lon
 {
     unsigned chunk;
 
-    while (n) {
+    while (n)
+    {
         chunk = n > CHUNK ? CHUNK : (unsigned)n;
         if (!asset_vram(chunk))
             return 0;
         n -= chunk;
         *loaded += chunk;
-        if (progress) {
+        if (progress)
+        {
             /* the callback may move port 0: on the X16 conio writes the
                KERNAL text screen through the VERA */
             unsigned char l, m, h;
 
             VERA_CTRL = 0;
-            l = VERA_ADDR_L; m = VERA_ADDR_M; h = VERA_ADDR_H;
+            l = VERA_ADDR_L;
+            m = VERA_ADDR_M;
+            h = VERA_ADDR_H;
             progress(name, name_len, *loaded, total);
             VERA_CTRL = 0;
-            VERA_ADDR_L = l; VERA_ADDR_M = m; VERA_ADDR_H = h;
+            VERA_ADDR_L = l;
+            VERA_ADDR_M = m;
+            VERA_ADDR_H = h;
         }
     }
     return 1;
@@ -107,11 +111,14 @@ unsigned char __fastcall__ vbm_load(const char *name, vbm_progress_cb progress)
      * is not shown yet, the screen on display keeps its colours, and the
      * image appears whole.  Without 512 bytes of heap, the file order. */
     pal = malloc(PALETTE_SIZE);
-    if (pal) {
+    if (pal)
+    {
         if (!asset_read(pal, PALETTE_SIZE))
             goto out;
         loaded = PALETTE_SIZE;
-    } else {
+    }
+    else
+    {
         vram_seek(VRAM(VERA_PALETTE_BASE, VERA_INC1));
         if (!stream(PALETTE_SIZE, &loaded, total, title, shown, progress))
             goto out;

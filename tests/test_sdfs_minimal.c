@@ -8,34 +8,39 @@
 extern unsigned char sd_mount(void);
 extern unsigned char sd_errno(void);
 
-int main(void) {
+int main(void)
+{
     unsigned char result;
-    
+
     printf("FAT32 Test START\n");
     fflush(stdout);
-    
+
     printf("Calling sd_mount()...\n");
     fflush(stdout);
-    
+
     result = sd_mount();
-    
+
     printf("sd_mount() returned: %d\n", result);
     printf("sd_errno = %d\n", sd_errno());
     fflush(stdout);
-    
-    if (result) {
+
+    if (result)
+    {
         printf("SUCCESS: Card mounted\n");
-    } else {
+    }
+    else
+    {
         printf("FAIL: Mount failed\n");
     }
     fflush(stdout);
-    
+
     printf("\nProgram halted. Press RUN/STOP to exit.\n");
     fflush(stdout);
-    
-    while (1) {
+
+    while (1)
+    {
         /* Infinite loop - output stays on screen */
     }
-    
+
     return 0;
 }

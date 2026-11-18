@@ -33,6 +33,6 @@ typedef void (*vtm_progress_cb)(const void *buf, unsigned long loaded, unsigned 
  * buffer, sized exactly from the file's own header/pattern_table (see
  * docs/vtm_format.md). progress may be NULL.
  * Returns NULL on any I/O error; caller owns the buffer (free() when done). */
-void * __fastcall__ vtm_load(const char *name, vtm_progress_cb progress);
+void *__fastcall__ vtm_load(const char *name, vtm_progress_cb progress);
 
 #endif /* VTM_H */

@@ -38,9 +38,11 @@ void __fastcall__ vram_copy(unsigned n);
 
 /* Palette: count entries (2 bytes each, GGGGBBBB 0000RRRR) from rgb, from
  * entry first on. */
-#define vera_palette(first, rgb, count) do { \
+#define vera_palette(first, rgb, count)                               \
+    do                                                                \
+    {                                                                 \
         vram_seek(VRAM(VERA_PALETTE_BASE + 2u * (first), VERA_INC1)); \
-        vram_write((rgb), 2u * (count)); \
+        vram_write((rgb), 2u * (count));                              \
     } while (0)
 
 #endif /* VMEM_H */

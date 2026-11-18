@@ -64,7 +64,8 @@ unsigned char __fastcall__ asset_open(const char *name)
     cbm_k_chkin(ASSET_LFN);
     i = cbm_k_readst();
     cbm_k_clrch();
-    if (i) {
+    if (i)
+    {
         asset_close();
         return 0;
     }
@@ -88,12 +89,14 @@ unsigned char asset_stream(void)
 void asset_close(void)
 {
 #if defined(__CX16__)
-    if (fd_open) {
+    if (fd_open)
+    {
         cbm_close(ASSET_LFN);
         fd_open = 0;
     }
 #else
-    if (fd >= 0) {
+    if (fd >= 0)
+    {
         close(fd);
         fd = -1;
     }
@@ -104,7 +107,8 @@ void (*asset_progress)(unsigned n);
 
 #if defined(__CX16__)
 /* the MACPTR count for n bytes left: 0 = to the end of the sector (<= 512) */
-#define MACPTR_N(n) ((n) >= 512 ? 0 : (n) > 255 ? 255 : (unsigned char)(n))
+#define MACPTR_N(n) ((n) >= 512 ? 0 : (n) > 255 ? 255 \
+                                                : (unsigned char)(n))
 
 unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 {
@@ -115,7 +119,8 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
     /* the channel only while reading: GETIN of the game must see the
      * keyboard */
     cbm_k_chkin(ASSET_LFN);
-    while (n) {
+    while (n)
+    {
         got = asset_macptr(MACPTR_N(n), p);
         if (!got)
             break;
@@ -138,7 +143,8 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
 
     /* a read may return fewer bytes than asked even mid-file: go on until
      * n bytes are in, only a zero read is the end */
-    while (n) {
+    while (n)
+    {
         got = read(fd, p, n);
         if (got <= 0)
             return 0;
@@ -155,7 +161,8 @@ unsigned char __fastcall__ asset_skip(unsigned long n)
 {
     unsigned chunk;
 
-    while (n) {
+    while (n)
+    {
         chunk = n > ASSET_BUF_SIZE ? ASSET_BUF_SIZE : (unsigned)n;
         if (!asset_read(asset_buf, chunk))
             return 0;
@@ -174,8 +181,10 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
      * $9F23, $9F24, ... */
     unsigned char v = *(unsigned char *)0xFF80;
 
-    if (v == 0xFF || (v < 0x80 ? v >= 49 : (unsigned char)-v >= 50)) {
-        while (n) {
+    if (v == 0xFF || (v < 0x80 ? v >= 49 : (unsigned char)-v >= 50))
+    {
+        while (n)
+        {
             cbm_k_chkin(ASSET_LFN);
             chunk = asset_macptr_fix(MACPTR_N(n), (void *)0x9F23);
             cbm_k_clrch();
@@ -188,7 +197,8 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
         return 1;
     }
 #endif
-    while (n) {
+    while (n)
+    {
         chunk = n > ASSET_BUF_SIZE ? ASSET_BUF_SIZE : (unsigned)n;
         if (!asset_read(asset_buf, chunk))
             return 0;

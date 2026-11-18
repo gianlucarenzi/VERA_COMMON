@@ -35,13 +35,15 @@ int main(void)
     t0 = cycles();
     pcm_play(&s);
     play = cycles() - t0;
-    while (tick_on()) {
+    while (tick_on())
+    {
         AUDIO_CTRL = 0;
         t0 = cycles();
         call_tick();
         t = cycles() - t0;
         sum += t;
-        if (t > max) max = t;
+        if (t > max)
+            max = t;
         ++frames;
     }
     printf("pcm_play: %lu cycles\n", play);

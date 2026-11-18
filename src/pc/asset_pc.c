@@ -17,7 +17,8 @@ unsigned char asset_open(const char *name)
     const char *env = getenv("VERA_ASSET_PATH");
     asset_close();
     snprintf(dirs, sizeof dirs, "%s", env && *env ? env : ".:data");
-    for (d = strtok_r(dirs, ":", &save); d && !asset_file; d = strtok_r(NULL, ":", &save)) {
+    for (d = strtok_r(dirs, ":", &save); d && !asset_file; d = strtok_r(NULL, ":", &save))
+    {
         if (snprintf(path, sizeof path, "%s/%s", d, name) >= (int)sizeof path)
             continue;
         asset_file = fopen(path, "rb");
@@ -41,7 +42,8 @@ unsigned char asset_skip(unsigned long n)
 
 unsigned char asset_vram(unsigned long n)
 {
-    while (n) {
+    while (n)
+    {
         unsigned size = n > sizeof asset_buf ? sizeof asset_buf : (unsigned)n;
         if (!asset_read(asset_buf, size))
             return 0;
@@ -58,7 +60,10 @@ void asset_close(void)
     asset_file = NULL;
 }
 
-unsigned char asset_stream(void) { return 0; }
+unsigned char asset_stream(void)
+{
+    return 0;
+}
 
 unsigned char asset_load(const char *name, void *dst, unsigned n)
 {

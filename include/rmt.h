@@ -73,7 +73,7 @@ void rmt_io_end(void);
  * FAT32 code of libvera_sd.lib), X16 the RAM_BANK (2.., bank 1 is XBSS);
  * 0 = the song is in the main RAM (the default).  Not on the C64. */
 extern unsigned char rmt_bank;
-#define RMT_ATARI_BANK(n) ((((n) & 3) << 2) | (((n) & 12) << 3))
+#define RMT_ATARI_BANK(n) ((((n)&3) << 2) | (((n)&12) << 3))
 #ifdef __CX16__
 #define RMT_BANK_WINDOW ((void *)0xA000)
 #else
@@ -83,21 +83,21 @@ extern unsigned char rmt_bank;
  * first); the music must be stopped */
 void __fastcall__ rmt_bank_copy(void *dst, const void *src, unsigned n);
 
-extern volatile unsigned int  rmt_frames;     /* song frames played */
-extern unsigned char          rmt_ispeed;     /* player calls per song frame */
-extern volatile unsigned char rmt_audc[];     /* AUDC values computed by the player */
-extern volatile unsigned char rmt_pokey[16];  /* the POKEY registers (RAM) */
+extern volatile unsigned int rmt_frames;     /* song frames played */
+extern unsigned char rmt_ispeed;             /* player calls per song frame */
+extern volatile unsigned char rmt_audc[];    /* AUDC values computed by the player */
+extern volatile unsigned char rmt_pokey[16]; /* the POKEY registers (RAM) */
 
 /* RMT_TRACKS = 4 (RMT4, mono: PSG voices 0-3) or 8 (RMT8, stereo for two
  * POKEYs: PSG voices 0-7) */
 #ifndef RMT_TRACKS
 #define RMT_TRACKS 4
 #endif
-extern const unsigned char rmt_tracks;                  /* tracks the player was built for */
-void psg_silence(void);                                 /* PSG voices at volume 0 */
-extern volatile unsigned char psg_enable;               /* 1 = voices follow the player */
-extern volatile unsigned char psg_stereo;               /* 1 = stereo pan */
-extern volatile unsigned char psg_hybrid;               /* 1 = PSG voices 0-3 silent (POKEY plays them) */
-extern volatile unsigned char psg_volume[RMT_TRACKS];   /* VERA level of the voices (0..63) */
+extern const unsigned char rmt_tracks;                /* tracks the player was built for */
+void psg_silence(void);                               /* PSG voices at volume 0 */
+extern volatile unsigned char psg_enable;             /* 1 = voices follow the player */
+extern volatile unsigned char psg_stereo;             /* 1 = stereo pan */
+extern volatile unsigned char psg_hybrid;             /* 1 = PSG voices 0-3 silent (POKEY plays them) */
+extern volatile unsigned char psg_volume[RMT_TRACKS]; /* VERA level of the voices (0..63) */
 
 #endif

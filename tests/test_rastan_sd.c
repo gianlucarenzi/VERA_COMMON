@@ -14,7 +14,8 @@ extern unsigned char sd_errno(void);
 
 static char buf[128];
 
-int main(void) {
+int main(void)
+{
     unsigned char ok;
     unsigned nread;
 
@@ -23,11 +24,13 @@ int main(void) {
     hud_puts(0, 1, "mounting...");
 
     ok = sd_mount();
-    if (!ok) {
+    if (!ok)
+    {
         hud_puts(0, 2, "FAIL: mount");
         printf("sd_mount() failed: %d\n", sd_errno());
         fflush(stdout);
-        while (1) {
+        while (1)
+        {
             /* keep screen visible */
         }
     }
@@ -36,11 +39,13 @@ int main(void) {
     hud_puts(0, 3, "opening /rastan/r1field/level.json");
 
     ok = sd_open("/rastan/r1field/level.json");
-    if (!ok) {
+    if (!ok)
+    {
         hud_puts(0, 4, "FAIL: open level.json");
         printf("sd_open() failed: %d\n", sd_errno());
         fflush(stdout);
-        while (1) {
+        while (1)
+        {
             /* keep screen visible */
         }
     }
@@ -57,7 +62,8 @@ int main(void) {
 
     sd_close();
 
-    while (1) {
+    while (1)
+    {
         /* hold on screen for visual verification */
     }
 

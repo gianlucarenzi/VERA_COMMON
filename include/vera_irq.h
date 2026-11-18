@@ -23,11 +23,11 @@
 
 /* (cc65's cx16.h defines VERA_IRQ_VSYNC too, with the same value) */
 #ifndef VERA_IRQ_VSYNC
-#define VERA_IRQ_VSYNC   0x01
+#define VERA_IRQ_VSYNC 0x01
 #endif
-#define VERA_IRQ_LINE    0x02
-#define VERA_IRQ_SPRCOL  0x04
-#define VERA_IRQ_AFLOW   0x08
+#define VERA_IRQ_LINE 0x02
+#define VERA_IRQ_SPRCOL 0x04
+#define VERA_IRQ_AFLOW 0x08
 
 /* Install the hook (idempotent).  Does not enable any VERA IRQ. */
 void vera_irq_install(void);

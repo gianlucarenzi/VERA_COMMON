@@ -21,15 +21,16 @@
 #define SLINKY_SLOT 5
 #endif
 
-#define N    600u                       /* 2 pages + 88 bytes */
-#define ADR  0x1FF80ul                  /* across the 128 KB boundary */
+#define N 600u        /* 2 pages + 88 bytes */
+#define ADR 0x1FF80ul /* across the 128 KB boundary */
 
 static unsigned char a[N], b[N], keep[4], keep2[4];
 
 static void corners(unsigned char *k)
 {
     unsigned char i;
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 4; ++i)
+    {
         slinky_seek((unsigned long)i << 16);
         slinky_read(k + i, 1);
     }
@@ -42,25 +43,32 @@ static unsigned char test(void)
 
     slot = slinky_find();
     cprintf("RBL-A2 SLOT %u\r\n", slot);
-    if (!slot) slot = SLINKY_SLOT;
+    if (!slot)
+        slot = SLINKY_SLOT;
     size = slinky_open(slot);
     cprintf("SLOT %u SIZE %u X 64K\r\n", slot, size);
-    if (!size) return 1;
+    if (!size)
+        return 1;
     corners(keep);
     slinky_open(slot);
     corners(keep2);
-    if (memcmp(keep, keep2, size < 4 ? size : 4)) return 2;
-    for (i = 0; i < N; ++i) a[i] = (unsigned char)(i * 7 + (i >> 8));
+    if (memcmp(keep, keep2, size < 4 ? size : 4))
+        return 2;
+    for (i = 0; i < N; ++i)
+        a[i] = (unsigned char)(i * 7 + (i >> 8));
     slinky_seek(ADR);
     slinky_write(a, N);
     slinky_seek(ADR);
     slinky_read(b, N);
-    if (memcmp(a, b, N)) return 3;
-    if (size < 16) {
+    if (memcmp(a, b, N))
+        return 3;
+    if (size < 16)
+    {
         memset(b, 0, N);
         slinky_seek(ADR + ((unsigned long)size << 16));
         slinky_read(b, N);
-        if (memcmp(a, b, N)) return 4;
+        if (memcmp(a, b, N))
+            return 4;
     }
     return 0;
 }
@@ -70,7 +78,10 @@ int main(void)
     unsigned char r;
     clrscr();
     r = test();
-    if (r) cprintf("SLINKY FAIL %u\r\n", r);
-    else cputs("SLINKY PASS\r\n");
-    for (;;) ;
+    if (r)
+        cprintf("SLINKY FAIL %u\r\n", r);
+    else
+        cputs("SLINKY PASS\r\n");
+    for (;;)
+        ;
 }

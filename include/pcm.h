@@ -14,10 +14,11 @@
  * AUDIO_RATE (rate = 48828 * AUDIO_RATE / 128 Hz, 16 = 6104 Hz), then the
  * samples, 8 bit signed. */
 
-typedef struct {
-    unsigned long vram;         /* where the samples are */
-    unsigned len;               /* bytes */
-    unsigned char rate;         /* AUDIO_RATE */
+typedef struct
+{
+    unsigned long vram; /* where the samples are */
+    unsigned len;       /* bytes */
+    unsigned char rate; /* AUDIO_RATE */
 } pcm_sound;
 
 /* Read a .pcm file to VRAM at vram and fill *s; 1 = ok. */

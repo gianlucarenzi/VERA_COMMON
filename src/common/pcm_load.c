@@ -13,7 +13,8 @@ unsigned char __fastcall__ pcm_load(const char *name, unsigned long vram, pcm_so
     if (!asset_open(name))
         return 0;
     ok = asset_read(hdr, 3);
-    if (ok) {
+    if (ok)
+    {
         s->vram = vram;
         s->len = hdr[0] | (hdr[1] << 8);
         s->rate = hdr[2];

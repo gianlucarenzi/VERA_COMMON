@@ -22,8 +22,8 @@
 #include "plat.h"
 #include "hud.h"
 
-#define SPR_DATA   0x13000ul            /* after the 320x240 bitmap ($12C00) */
-#define SPR_ATTR0  VERA_SPRITE_BASE
+#define SPR_DATA 0x13000ul /* after the 320x240 bitmap ($12C00) */
+#define SPR_ATTR0 VERA_SPRITE_BASE
 
 static unsigned int px = 152, py = 112; /* sprite position (320x240) */
 static unsigned int frames, dropped;
@@ -33,7 +33,8 @@ static void load_progress(const char *name, unsigned char name_len,
 {
     unsigned char i;
 
-    if (loaded == 0) {
+    if (loaded == 0)
+    {
         gotoxy(0, 4);
         cputs("Image: ");
         for (i = 0; i < name_len && i < 32; ++i)
@@ -49,20 +50,22 @@ static void make_sprite(void)
 {
     unsigned char r;
     static const unsigned char attr[8] = {
-        (unsigned char)(SPR_DATA >> 5),                 /* address 12:5 */
-        0x80 | (unsigned char)(SPR_DATA >> 13),         /* 8 bpp, address 16:13 */
-        0, 0, 0, 0,                                     /* X, Y */
-        0x0C,                                           /* Z = 3: in front */
-        0x50                                            /* 16x16, palette 0 */
+        (unsigned char)(SPR_DATA >> 5),         /* address 12:5 */
+        0x80 | (unsigned char)(SPR_DATA >> 13), /* 8 bpp, address 16:13 */
+        0, 0, 0, 0,                             /* X, Y */
+        0x0C,                                   /* Z = 3: in front */
+        0x50                                    /* 16x16, palette 0 */
     };
 
-    vram_seek(VRAM(SPR_DATA, VERA_INC4));               /* 256 bytes, 32 bit fill */
-    vram_fill32(1, 256 / 4);                            /* white (image colour 1) */
-    for (r = 2; r < 14; ++r) {                          /* black ring inside */
+    vram_seek(VRAM(SPR_DATA, VERA_INC4)); /* 256 bytes, 32 bit fill */
+    vram_fill32(1, 256 / 4);              /* white (image colour 1) */
+    for (r = 2; r < 14; ++r)
+    { /* black ring inside */
         vram_seek(VRAM(SPR_DATA + r * 16u + 2, VERA_INC1));
-        vram_fill(255, 12);                             /* image colour 255 */
+        vram_fill(255, 12); /* image colour 255 */
     }
-    for (r = 4; r < 12; ++r) {                          /* hollow inside */
+    for (r = 4; r < 12; ++r)
+    { /* hollow inside */
         vram_seek(VRAM(SPR_DATA + r * 16u + 4, VERA_INC1));
         vram_fill(0, 8);
     }
@@ -83,7 +86,7 @@ static void move_sprite(void)
 
 /* a frame counter in BCD, the way a game keeps its score */
 static unsigned char bcd_frames[3];
-static const unsigned char bcd_one[3] = { 0x00, 0x00, 0x01 };
+static const unsigned char bcd_one[3] = {0x00, 0x00, 0x01};
 
 static unsigned start_line, cur_lines, max_lines;
 
@@ -93,30 +96,31 @@ static void status(unsigned char row, unsigned char joy)
 {
     unsigned char i;
 
-    switch (row) {
-    case 0:
-        hud_u16(12, 8, frames, 5);
-        hud_u16(27, 8, dropped, 5);
-        break;
-    case 1:
-        hud_u16(6, 9, rmt_frames, 5);
-        hud_u16(18, 9, cur_lines, 3);
-        hud_u16(26, 9, max_lines, 3);
-        break;
-    case 2:
-        hud_puts(9, 10, joy & PAD_UP ? "u" : "-");
-        hud_puts(10, 10, joy & PAD_DOWN ? "d" : "-");
-        hud_puts(11, 10, joy & PAD_LEFT ? "l" : "-");
-        hud_puts(12, 10, joy & PAD_RIGHT ? "r" : "-");
-        hud_puts(13, 10, joy & PAD_FIRE ? "f" : "-");
-        hud_u16(22, 10, px, 3);
-        hud_u16(26, 10, py, 3);
-        hud_bcd(6, 12, bcd_frames, 3);
-        break;
-    default:
-        for (i = 0; i < 4; ++i)
-            hud_u16((unsigned char)(4 + 3 * i), 11, psg_volume[i], 2);
-        break;
+    switch (row)
+    {
+        case 0:
+            hud_u16(12, 8, frames, 5);
+            hud_u16(27, 8, dropped, 5);
+            break;
+        case 1:
+            hud_u16(6, 9, rmt_frames, 5);
+            hud_u16(18, 9, cur_lines, 3);
+            hud_u16(26, 9, max_lines, 3);
+            break;
+        case 2:
+            hud_puts(9, 10, joy & PAD_UP ? "u" : "-");
+            hud_puts(10, 10, joy & PAD_DOWN ? "d" : "-");
+            hud_puts(11, 10, joy & PAD_LEFT ? "l" : "-");
+            hud_puts(12, 10, joy & PAD_RIGHT ? "r" : "-");
+            hud_puts(13, 10, joy & PAD_FIRE ? "f" : "-");
+            hud_u16(22, 10, px, 3);
+            hud_u16(26, 10, py, 3);
+            hud_bcd(6, 12, bcd_frames, 3);
+            break;
+        default:
+            for (i = 0; i < 4; ++i)
+                hud_u16((unsigned char)(4 + 3 * i), 11, psg_volume[i], 2);
+            break;
     }
 }
 
@@ -135,7 +139,7 @@ int main(void)
     cputs(have_image ? "Image loaded.   " : "No demo.vbm.    ");
 
     vbm_init();
-    vt_color = 0x01;                    /* bg 0: the bitmap shows through */
+    vt_color = 0x01; /* bg 0: the bitmap shows through */
     vt_init(VT_40X30);
     vt_gotoxy(1, 28);
     vt_puts("libvera on " PLAT_NAME);
@@ -158,8 +162,9 @@ int main(void)
 #endif
     hud_init();
 
-    vera_frame_wait();                  /* the start-up is not a dropped frame */
-    for (;;) {
+    vera_frame_wait(); /* the start-up is not a dropped frame */
+    for (;;)
+    {
         n = vera_frame_wait();
         start_line = vera_scanline();
         bcd_add(bcd_frames, bcd_one, 3);
@@ -167,18 +172,23 @@ int main(void)
         dropped += n - 1;
 
         joy = plat_joy();
-        if ((joy & PAD_LEFT) && px >= n)        px -= n;
-        if ((joy & PAD_RIGHT) && px < 304)      px += n;
-        if ((joy & PAD_UP) && py >= n)          py -= n;
-        if ((joy & PAD_DOWN) && py < 224)       py += n;
+        if ((joy & PAD_LEFT) && px >= n)
+            px -= n;
+        if ((joy & PAD_RIGHT) && px < 304)
+            px += n;
+        if ((joy & PAD_UP) && py >= n)
+            py -= n;
+        if ((joy & PAD_DOWN) && py < 224)
+            py += n;
         move_sprite();
 
         status((unsigned char)(++tick & 3), joy);
-        cur_lines = vera_lines_since(start_line);   /* VERA lines of work */
-        if (frames > 60 && cur_lines > max_lines)   /* not the start-up */
+        cur_lines = vera_lines_since(start_line); /* VERA lines of work */
+        if (frames > 60 && cur_lines > max_lines) /* not the start-up */
             max_lines = cur_lines;
 
-        if (kbhit()) {
+        if (kbhit())
+        {
             k = cgetc();
             if (k == PLAT_KEY_EXIT || k == 'q' || k == 'Q')
                 break;

@@ -23,15 +23,15 @@
 
 unsigned char __fastcall__ sio_read_sector(unsigned char unit, unsigned sector, void *buf);
 
-#define DIR_FIRST   361
-#define DIR_LAST    368
-#define RETRIES     3
-#define UNIT        1
+#define DIR_FIRST 361
+#define DIR_LAST 368
+#define RETRIES 3
+#define UNIT 1
 
-#define FLAG_DELETED  0x80
-#define FLAG_INUSE    0x43              /* $42 DOS 2; $03 DOS 2.5: the file
+#define FLAG_DELETED 0x80
+#define FLAG_INUSE 0x43    /* $42 DOS 2; $03 DOS 2.5: the file
                                            uses sectors above 719 (ED) */
-#define FLAG_NOFILENO 0x04              /* MyDOS: 16 bit links, no file number */
+#define FLAG_NOFILENO 0x04 /* MyDOS: 16 bit links, no file number */
 
 unsigned char asset_buf[ASSET_BUF_SIZE];
 
@@ -41,9 +41,9 @@ unsigned char asset_dsk_status;
 unsigned asset_dsk_sector;
 
 static unsigned char sec[128];
-static unsigned next;                   /* next sector of the file, 0 = none */
+static unsigned next; /* next sector of the file, 0 = none */
 static unsigned char fileno, flag;
-static unsigned char pos, cnt;          /* bytes of sec taken / held */
+static unsigned char pos, cnt; /* bytes of sec taken / held */
 static unsigned char is_open;
 static char name83[11];
 
@@ -61,16 +61,19 @@ static unsigned char read_sector(unsigned s)
 /* the next sector of the file into sec; 0 = end of file or error */
 static unsigned char fill(void)
 {
-    if (next == 0 || !read_sector(next)) {
+    if (next == 0 || !read_sector(next))
+    {
         next = 0;
         return 0;
     }
-    if (!(flag & FLAG_NOFILENO) && (sec[125] >> 2) != fileno) {
-        next = 0;                       /* the chain left the file */
+    if (!(flag & FLAG_NOFILENO) && (sec[125] >> 2) != fileno)
+    {
+        next = 0; /* the chain left the file */
         return 0;
     }
     cnt = sec[127] & 0x7F;
-    if (cnt > 125) {
+    if (cnt > 125)
+    {
         next = 0;
         return 0;
     }
@@ -93,8 +96,10 @@ unsigned char __fastcall__ asset_open(const char *name)
 
     /* "r1field.vts" -> "R1FIELD VTS" */
     memset(name83, ' ', sizeof name83);
-    for (i = j = 0; (c = name[i]) != 0 && j < 11; ++i) {
-        if (c == '.') {
+    for (i = j = 0; (c = name[i]) != 0 && j < 11; ++i)
+    {
+        if (c == '.')
+        {
             j = 8;
             continue;
         }
@@ -102,16 +107,19 @@ unsigned char __fastcall__ asset_open(const char *name)
     }
 
     rmt_io_begin();
-    for (s = DIR_FIRST; s <= DIR_LAST; ++s) {
+    for (s = DIR_FIRST; s <= DIR_LAST; ++s)
+    {
         if (!read_sector(s))
             break;
-        for (i = 0; i < 8; ++i) {
+        for (i = 0; i < 8; ++i)
+        {
             d = sec + (i << 4);
             if (d[0] == 0)
-                goto fail;              /* never used: end of the directory */
+                goto fail; /* never used: end of the directory */
             if ((d[0] & FLAG_DELETED) || !(d[0] & FLAG_INUSE))
                 continue;
-            if (memcmp(d + 5, name83, 11) == 0) {
+            if (memcmp(d + 5, name83, 11) == 0)
+            {
                 flag = d[0];
                 next = d[3] | (d[4] << 8);
                 fileno = (unsigned char)(((s - DIR_FIRST) << 3) + i);
@@ -134,7 +142,8 @@ unsigned char asset_stream(void)
 
 void asset_close(void)
 {
-    if (is_open) {
+    if (is_open)
+    {
         is_open = 0;
         rmt_io_end();
     }
@@ -148,11 +157,13 @@ unsigned char __fastcall__ asset_read(void *dst, unsigned n)
     unsigned char *p = (unsigned char *)dst;
     unsigned n0 = n;
 
-    while (n) {
-        if (pos == cnt) {
+    while (n)
+    {
+        if (pos == cnt)
+        {
             if (!fill())
                 return 0;
-            continue;                   /* a sector may hold 0 bytes */
+            continue; /* a sector may hold 0 bytes */
         }
         k = cnt - pos;
         if (k > n)
@@ -171,8 +182,10 @@ unsigned char __fastcall__ asset_skip(unsigned long n)
 {
     unsigned char k;
 
-    while (n) {
-        if (pos == cnt) {
+    while (n)
+    {
+        if (pos == cnt)
+        {
             if (!fill())
                 return 0;
             continue;
@@ -190,8 +203,10 @@ unsigned char __fastcall__ asset_vram(unsigned long n)
 {
     unsigned char k;
 
-    while (n) {
-        if (pos == cnt) {
+    while (n)
+    {
+        if (pos == cnt)
+        {
             if (!fill())
                 return 0;
             continue;
