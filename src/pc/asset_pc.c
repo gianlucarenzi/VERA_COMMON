@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "asset.h"
@@ -8,14 +9,17 @@ unsigned char asset_buf[ASSET_BUF_SIZE];
 void (*asset_progress)(unsigned);
 static FILE *asset_file;
 
+/* the files: in the directories of VERA_ASSET_PATH (':' between them),
+   else in the current directory and in data/ */
 unsigned char asset_open(const char *name)
 {
-    char path[256];
+    char path[512], dirs[512], *d, *save = NULL;
+    const char *env = getenv("VERA_ASSET_PATH");
     asset_close();
-    asset_file = fopen(name, "rb");
-    if (!asset_file) {
-        if (snprintf(path, sizeof path, "data/%s", name) >= (int)sizeof path)
-            return 0;
+    snprintf(dirs, sizeof dirs, "%s", env && *env ? env : ".:data");
+    for (d = strtok_r(dirs, ":", &save); d && !asset_file; d = strtok_r(NULL, ":", &save)) {
+        if (snprintf(path, sizeof path, "%s/%s", d, name) >= (int)sizeof path)
+            continue;
         asset_file = fopen(path, "rb");
     }
     return asset_file != NULL;

@@ -1,6 +1,6 @@
 PC_CC ?= cc
 PC_AR ?= ar
-PC_CFLAGS ?= -O2 -std=c99 -Wall -Wextra -D__PC__ -D__fastcall__= -I include
+PC_CFLAGS ?= -O2 -std=gnu99 -Wall -Wextra -D__PC__ -D__fastcall__= -I include
 PC_CFLAGS += $(shell pkg-config --cflags sdl2)
 PC_LDLIBS = $(shell pkg-config --libs sdl2)
 PC_OBJ = $(LIBVERA_DIR)/vera_pc.o $(LIBVERA_DIR)/asset_pc.o

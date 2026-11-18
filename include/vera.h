@@ -20,6 +20,7 @@ extern volatile unsigned char vera_pc_registers[0x20];
 #define VERA_REG(n)     vera_pc_registers[n]
 volatile unsigned char *vera_pc_data0(void);
 volatile unsigned char *vera_pc_data1(void);
+unsigned char *vera_pc_vram(void);       /* the 128 KB of VRAM */
 #else
 #ifndef VERA_BASE
 #if defined(__ATARI__)

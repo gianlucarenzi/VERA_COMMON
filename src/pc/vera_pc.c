@@ -24,6 +24,11 @@ static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 static Uint32 last_frame;
 
+unsigned char *vera_pc_vram(void)
+{
+    return vram;
+}
+
 static unsigned address(unsigned port)
 {
     return vaddr[port] & 0x1ffffu;
@@ -32,6 +37,15 @@ static unsigned address(unsigned port)
 static unsigned increment(unsigned port)
 {
     return vinc[port];
+}
+
+/* the ADDR registers follow port 0, as on the VERA (code that saves and
+   restores the address reads them) */
+static void regs0(void)
+{
+    vera_pc_registers[0] = (unsigned char)vaddr[0];
+    vera_pc_registers[1] = (unsigned char)(vaddr[0] >> 8);
+    vera_pc_registers[2] = (unsigned char)((vera_pc_registers[2] & 0xFE) | ((vaddr[0] >> 16) & 1));
 }
 
 static unsigned increment_value(unsigned long v)
@@ -53,6 +67,7 @@ volatile unsigned char *vera_pc_data0(void)
 {
     unsigned at = address(0);
     vaddr[0] = (at + increment(0)) & 0x1ffffu;
+    regs0();
     return &vram[at];
 }
 
@@ -81,27 +96,33 @@ static Uint32 color(unsigned index)
 static void draw_layer(unsigned layer)
 {
     unsigned reg = layer ? 0x14u : 0x0du;
+    unsigned config = vera_pc_registers[reg];
     unsigned map = vera_pc_registers[reg + 1] * 512u;
-    unsigned tiles = (vera_pc_registers[reg + 2] >> 2) * 2048u;
-    unsigned sx = vera_pc_registers[reg + 3] | (vera_pc_registers[reg + 4] << 8);
-    unsigned sy = vera_pc_registers[reg + 5] | (vera_pc_registers[reg + 6] << 8);
+    unsigned tbase = vera_pc_registers[reg + 2];
+    unsigned tiles = (tbase >> 2) * 2048u;
+    unsigned mapw = 32u << ((config >> 4) & 3u), maph = 32u << ((config >> 6) & 3u);
+    unsigned tw = (tbase & 1u) ? 16u : 8u, th = (tbase & 2u) ? 16u : 8u;
+    unsigned tsh = tw == 16u ? 4u : 3u, thsh = th == 16u ? 4u : 3u;
+    unsigned sx = vera_pc_registers[reg + 3] | ((vera_pc_registers[reg + 4] & 15u) << 8);
+    unsigned sy = vera_pc_registers[reg + 5] | ((vera_pc_registers[reg + 6] & 15u) << 8);
     unsigned x, y;
+    if ((config & 3u) != 2u || (config & 4u))       /* only 4bpp tile mode */
+        return;
     for (y = 0; y < 240; ++y) {
-        unsigned wy = (y + sy) & 511u;
+        unsigned wy = (y + sy) & (maph * th - 1u);
         for (x = 0; x < 320; ++x) {
-            unsigned wx = (x + sx) & 511u;
-            unsigned ma = map + ((wy >> 3) * 64u + (wx >> 3)) * 2u;
+            unsigned wx = (x + sx) & (mapw * tw - 1u);
+            unsigned ma = (map + ((wy >> thsh) * mapw + (wx >> tsh)) * 2u) & 0x1ffffu;
             unsigned entry = vram[ma] | (vram[ma + 1] << 8);
-            unsigned tx = wx & 7u, ty = wy & 7u;
-            if (entry & 0x1000u) tx = 7u - tx;
-            if (entry & 0x2000u) ty = 7u - ty;
-            unsigned tile = entry & 0x0fffu;
-            unsigned ta = (tiles + tile * 32u + ty * 4u + (tx >> 1)) & 0x1ffffu;
+            unsigned tx = wx & (tw - 1u), ty = wy & (th - 1u);
+            if (entry & 0x0400u) tx = tw - 1u - tx;
+            if (entry & 0x0800u) ty = th - 1u - ty;
+            unsigned tile = entry & 0x03ffu;
+            unsigned ta = (tiles + tile * (tw * th / 2u) + ty * (tw / 2u) + (tx >> 1)) & 0x1ffffu;
             unsigned packed = vram[ta];
-            unsigned pen = (tx & 1u) ? packed >> 4 : packed & 15u;
-            unsigned palette = ((entry >> 14) & 3u) * 16u + pen;
+            unsigned pen = (tx & 1u) ? packed & 15u : packed >> 4;   /* left pixel: high nibble */
             if (pen)
-                pixels[y * 320u + x] = color(palette);
+                pixels[y * 320u + x] = color(((entry >> 12) & 15u) * 16u + pen);
         }
     }
 }
@@ -142,7 +163,7 @@ static void draw_sprites(unsigned z)
                     continue;
                 tx = (a[6] & 1u) ? width - 1u - (unsigned)x : (unsigned)x;
                 packed = vram[(base + ty * row_bytes + (tx >> 1)) & 0x1ffffu];
-                pen = (tx & 1u) ? packed >> 4 : packed & 15u;
+                pen = (tx & 1u) ? packed & 15u : packed >> 4;   /* left pixel: high nibble */
                 if (pen)
                     pixels[(unsigned)py * 320u + (unsigned)px] =
                         color(palette + pen);
@@ -156,19 +177,21 @@ static void present(void)
     unsigned x, y;
     if (!renderer)
         return;
+    Uint32 back = color(0);
     for (y = 0; y < 240; ++y)
         for (x = 0; x < 320; ++x)
-            pixels[y * 320u + x] = 0xff000000u;
+            pixels[y * 320u + x] = back;
+    /* VERA order: background, sprites Z1, layer 0, Z2, layer 1, Z3 */
+    if (vera_pc_registers[9] & VERA_VIDEO_SPRITES)
+        draw_sprites(1);
     if (vera_pc_registers[9] & VERA_VIDEO_LAYER0)
         draw_layer(0);
     if (vera_pc_registers[9] & VERA_VIDEO_SPRITES)
-        draw_sprites(1);
+        draw_sprites(2);
     if (vera_pc_registers[9] & VERA_VIDEO_LAYER1)
         draw_layer(1);
-    if (vera_pc_registers[9] & VERA_VIDEO_SPRITES) {
-        draw_sprites(2);
+    if (vera_pc_registers[9] & VERA_VIDEO_SPRITES)
         draw_sprites(3);
-    }
     if (!texture)
         return;
     SDL_UpdateTexture(texture, NULL, pixels, 320 * (int)sizeof(Uint32));
@@ -188,8 +211,20 @@ void vera_irq_set_callback(void (*callback)(void))
     frame_callback = callback;
 }
 
+static void sdl_open(void);
+
 void vera_frame_init(void)
 {
+    sdl_open();
+    last_frame = SDL_GetTicks();
+}
+
+/* the window opens at the first VERA access that needs it (vera_require,
+   vera_frame_wait), so a title shown while loading is visible */
+static void sdl_open(void)
+{
+    if (window)
+        return;
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
         fprintf(stderr, "libvera SDL init: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -233,6 +268,7 @@ unsigned char vera_frame_wait(void)
 {
     SDL_Event event;
     Uint32 now, delay;
+    sdl_open();
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
             key_state = 0;
@@ -268,6 +304,35 @@ unsigned char vera_frame_wait(void)
     if (frame_callback)
         frame_callback();
     present();
+    {   /* debug: VERA_PC_FRAMES=n writes the VRAM to VERA_PC_DUMP (default
+           vram.bin) after n frames and exits; run with SDL_VIDEODRIVER=dummy */
+        static long left = -2;
+        if (left == -2) {
+            const char *e = getenv("VERA_PC_FRAMES");
+            left = e ? atol(e) : -1;
+        }
+        if (left > 0 && !--left) {
+            const char *n = getenv("VERA_PC_DUMP");
+            FILE *f = fopen(n ? n : "vram.bin", "wb");
+            if (f) {
+                fwrite(vram, 1, sizeof vram, f);
+                fwrite((const void *)vera_pc_registers, 1, 0x20, f);
+                fclose(f);
+            }
+            f = fopen("frame.ppm", "wb");      /* and the last frame */
+            if (f) {
+                unsigned i;
+                fprintf(f, "P6 320 240 255\n");
+                for (i = 0; i < 320u * 240u; ++i) {
+                    fputc((int)(pixels[i] >> 16) & 255, f);
+                    fputc((int)(pixels[i] >> 8) & 255, f);
+                    fputc((int)pixels[i] & 255, f);
+                }
+                fclose(f);
+            }
+            exit(0);
+        }
+    }
     return 1;
 }
 
@@ -296,7 +361,7 @@ unsigned int vera_detect(void)
     return VERA_CARD_ID;
 }
 
-unsigned int vera_require(void) { return vera_detect(); }
+unsigned int vera_require(void) { sdl_open(); return vera_detect(); }
 
 void vram_seek(unsigned long v)
 {
@@ -315,15 +380,18 @@ void vram_write(const void *src, unsigned n)
 {
     const unsigned char *p = src;
     while (n--) { vram[address(0)] = *p++; vaddr[0] = (vaddr[0] + increment(0)) & 0x1ffffu; }
+    regs0();
 }
 void vram_read(void *dst, unsigned n)
 {
     unsigned char *p = dst;
     while (n--) { *p++ = vram[address(0)]; vaddr[0] = (vaddr[0] + increment(0)) & 0x1ffffu; }
+    regs0();
 }
 void vram_fill(unsigned char value, unsigned n)
 {
     while (n--) { vram[address(0)] = value; vaddr[0] = (vaddr[0] + increment(0)) & 0x1ffffu; }
+    regs0();
 }
 void vram_fill32(unsigned char value, unsigned n)
 {
@@ -336,6 +404,7 @@ void vram_copy(unsigned n)
         vaddr[0] = (vaddr[0] + increment(0)) & 0x1ffffu;
         vaddr[1] = (vaddr[1] + increment(1)) & 0x1ffffu;
     }
+    regs0();
 }
 
 void sfx_init(const void *bank) { (void)bank; }
@@ -345,3 +414,21 @@ unsigned char sfx_busy(void) { return 0; }
 void pcm_play(const void *sound) { (void)sound; }
 void pcm_stop(void) {}
 unsigned char pcm_busy(void) { return 0; }
+
+/* bcd.s bcd_add: dst += src, nbytes BCD bytes, most significant first;
+   returns the carry out */
+unsigned char __fastcall__ bcd_add(void *dst, const void *src, unsigned char nbytes)
+{
+    unsigned char *d = dst;
+    const unsigned char *s = src;
+    unsigned carry = 0;
+    while (nbytes--) {
+        unsigned lo = (d[nbytes] & 15u) + (s[nbytes] & 15u) + carry;
+        unsigned hi = (d[nbytes] >> 4) + (s[nbytes] >> 4);
+        if (lo > 9) { lo -= 10; ++hi; }
+        carry = hi > 9;
+        if (carry) hi -= 10;
+        d[nbytes] = (unsigned char)(hi << 4 | lo);
+    }
+    return (unsigned char)carry;
+}
