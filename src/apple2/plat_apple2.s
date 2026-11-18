@@ -119,6 +119,16 @@ irq_none:
 _plat_joy:
     lda #0
     sta bits
+    lda KBD                             ; a key typed and not read yet, not one
+    bpl @akd                            ; of the pad's: leave it to conio's
+    and #$7F                            ; kbhit / cgetc ($C010 would clear the
+    ldx #4                              ; strobe: the game's keys got lost when
+@t: cmp keys,x                          ; plat_joy ran first, RastanRIP 2026-11-18)
+    beq @akd
+    dex
+    bpl @t
+    bmi @buttons
+@akd:
     lda KBDSTRB                         ; a key down now?
     bpl @buttons
     lda KBD                             ; the last key typed
