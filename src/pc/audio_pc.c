@@ -51,7 +51,7 @@ static void psg_sample(int *l, int *r)
     for (k = 0; k < 16; ++k, reg += 4)
     {
         unsigned f = reg[0] | reg[1] << 8, vol = reg[2] & 63, wave = reg[3] >> 6, pw = reg[3] & 63;
-        unsigned p, old = phase[k];
+        unsigned old = phase[k];
         int v;
         if (!vol || !(reg[2] & 0xC0))
         {
@@ -59,28 +59,28 @@ static void psg_sample(int *l, int *r)
             continue;
         }
         phase[k] = (phase[k] + f) & 0x1FFFF;
-        p = phase[k] >> 11; /* 0 .. 63 */
+        /* as the VERA (x16emu audio.c): a 6-bit unsigned level, then signed */
         switch (wave)
         {
-            case 0: /* pulse */
-                v = p < pw + 1u ? 63 : -64;
+            case 0: /* pulse: high while phase[16:10] <= width (63 = 50%) */
+                v = (phase[k] >> 10) > pw ? 0 : 63;
                 break;
             case 1: /* sawtooth */
-                v = (int)(p * 2) - 64;
+                v = (int)(phase[k] >> 11);
                 break;
             case 2: /* triangle */
-                v = p < 32 ? (int)(p * 4) - 64 : 191 - (int)(p * 4);
+                v = phase[k] & 0x10000 ? (int)(~(phase[k] >> 10) & 0x3F) : (int)((phase[k] >> 10) & 0x3F);
                 break;
-            default: /* noise: a new bit when the phase wraps */
+            default: /* noise: a new value when the phase wraps */
                 if (phase[k] < old)
                 {
                     noise_bit = (unsigned char)(((noise >> 0) ^ (noise >> 1)) & 1);
                     noise = (unsigned short)((noise >> 1) | (noise_bit << 15));
                 }
-                v = (noise & 0xFF) - 128;
-                v >>= 1;
+                v = noise & 0x3F;
                 break;
         }
+        v -= 32; /* -32 .. 31 */
         v *= vol_log[vol];
         if (reg[2] & 0x40)
             *l += v;
@@ -117,8 +117,8 @@ static void callback(void *ud, Uint8 *stream, int len)
                 pcm_cur = 0;
         }
         p = pcm_cur * 64;
-        l = (sl >> 2) + p;
-        r = (sr >> 2) + p;
+        l = (sl >> 1) + p;
+        r = (sr >> 1) + p;
         out[i * 2] = (Sint16)(l > 32767 ? 32767 : l < -32768 ? -32768
                                                              : l);
         out[i * 2 + 1] = (Sint16)(r > 32767 ? 32767 : r < -32768 ? -32768
